@@ -17,8 +17,17 @@ window.PQ = {
     photoChatName: 'the Facebook chat',
     photoChatUrl: '',
     teams: {
-      a: { name: 'Team A', members: ['Calle', 'Fanny', 'Tessan', 'Måns'] },
-      b: { name: 'Team B', members: ['Fredrik', 'Axel', 'Maja', 'Eskil', 'Brorsson'] },
+      // shotPhrase is used when this team gets sabotaged (Czech: "čtyři panáky", but "pět panáků").
+      a: {
+        name: 'Team A',
+        members: ['Calle', 'Fanny', 'Tessan', 'Måns'],
+        shotPhrase: 'Dobrý den, můžeme poprosit o čtyři panáky místního alkoholu?',
+      },
+      b: {
+        name: 'Team B',
+        members: ['Fredrik', 'Axel', 'Maja', 'Eskil', 'Brorsson'],
+        shotPhrase: 'Dobrý den, můžeme poprosit o pět panáků místního alkoholu?',
+      },
     },
   },
 
@@ -100,8 +109,13 @@ window.PQ = {
     url: 'https://www.pilsnerurquell.com/stories/foam-is-flavour-three-pilsner-urquell-pours/',
   },
 
+  SABOTAGE: {
+    text: 'The other team must drink one shot per team member. Ask the bartender for "something local" and drink whatever you get. Post a photo in the Facebook chat as evidence.',
+  },
+
   EXTRAS: [
     { id: 'cafe', name: 'Rest stop', points: 2, text: 'Sit down for 15 minutes. The team that drinks the most Hladinkas at its rest stop gets +2 (a tie gives both teams the points). Post a photo of your table in the Facebook chat.' },
     { id: 'local', name: 'Local challenge', points: 0, text: 'Just for fun: order something in Czech, or ask a local for their favourite spot in Prague.' },
+    { id: 'vodnik', name: 'Vodníkovo sperma', points: 1, text: 'Drink a Vodníkovo sperma at any point during the quest. Post a photo in the Facebook chat as evidence.' },
   ],
 };

@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const { CONFIG, STOPS, ROLES, EXTRAS, SNYT } = window.PQ;
+  const { CONFIG, STOPS, ROLES, EXTRAS, SNYT, SABOTAGE } = window.PQ;
   const app = document.getElementById('app');
   const tabbar = document.getElementById('tabbar');
   const darkMq = window.matchMedia('(prefers-color-scheme: dark)');
@@ -279,7 +279,7 @@
       const sent = prog.extras[x.id];
       return `<div class="card">
         <div class="j-top" style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-          <h3>${esc(x.name)}</h3><span class="chip ${sent ? 'done' : ''}">${sent ? 'Sent ' + timeStr(sent) : (x.points ? '+' + x.points + ' pts' : 'Just for fun')}</span>
+          <h3>${esc(x.name)}</h3><span class="chip ${sent ? 'done' : ''}">${sent ? 'Sent ' + timeStr(sent) : (x.points ? `+${x.points} pt${x.points === 1 ? '' : 's'}` : 'Just for fun')}</span>
         </div>
         <p class="muted">${esc(x.text)}</p>
         <div class="field"><input type="text" data-extra-draft="${x.id}" value="${esc(prog.extraDrafts[x.id] || '')}" placeholder="${x.id === 'cafe' ? 'Where, and how many Hladinkas?' : 'What happened?'}" aria-label="${esc(x.name)} note"></div>
@@ -314,7 +314,8 @@
         </div>
         <div class="card">
           <h3>Sabotage card</h3>
-          <p class="muted">Once per game. ${esc(teamName(other))} must drink a Hladinka.</p>
+          <p class="muted">Once per game. ${esc(SABOTAGE.text).replace('The other team', esc(teamName(other)))}</p>
+          <div class="phrase"><span class="q-label">If you get sabotaged, say</span><p lang="cs">${esc(CONFIG.teams[team].shotPhrase)}</p></div>
           ${sab}
         </div>
       </div>
@@ -404,6 +405,7 @@
         <table class="score-table">
           <tr><td>Rest stop: 15 minutes sitting down, with a photo of your table. The team that drinks the most Hladinkas there wins (a tie gives both teams the points).</td><td>+2</td></tr>
           <tr><td>Local challenge, just for fun: order in Czech, or ask a local for their favourite spot</td><td>+0</td></tr>
+          <tr><td>Vodníkovo sperma: drink one at any point during the quest, with a photo in ${photoChat()}</td><td>+1</td></tr>
           <tr><td>Mystery question at the finish, combining details from two stops</td><td>+5</td></tr>
           <tr><td>Šnyt challenge: the team with the most šnyts by the finish (a photo of each in ${photoChat()}; a tie gives both teams the points). <a href="${esc(SNYT.url)}" target="_blank" rel="noopener">What's a šnyt?</a></td><td>+${SNYT.points}</td></tr>
         </table>
@@ -415,7 +417,8 @@
       </section>
       <section class="card">
         <h2>Sabotage card</h2>
-        <p style="margin:0">Each team can play it once. The other team must drink a Hladinka.</p>
+        <p>Each team can play it once. ${esc(SABOTAGE.text)}</p>
+        ${Object.values(CONFIG.teams).map((t) => `<div class="phrase"><span class="q-label">${esc(t.name)} (${t.members.length} shots) says</span><p lang="cs">${esc(t.shotPhrase)}</p></div>`).join('')}
       </section>
       <section class="card">
         <h2>Roles rotate every stop</h2>
@@ -435,7 +438,8 @@
 
   // ---------- Judge ----------
   const J_KEY = 'pq:judge';
-  const blankJudgeTeam = () => ({ stops: {}, rest: 0, mystery: 0, late: 0, snyt: 0 });
+  const blankJudgeTeam = () => ({ stops: {}, rest: 0, mystery: 0, late: 0, snyt: 0, vodnik: false });
+  const VODNIK_POINTS = EXTRAS.find((x) => x.id === 'vodnik').points;
   let judge = loadJudge();
 
   function loadJudge() {
@@ -463,7 +467,7 @@
   function teamTotal(t) {
     const jt = judge.teams[t];
     const stops = STOPS.reduce((sum, s) => sum + stopScore(t, s.id), 0);
-    return stops + mostBonus(t, 'rest') + mostBonus(t, 'snyt') + (+jt.mystery || 0) - latePenalty(+jt.late || 0);
+    return stops + mostBonus(t, 'rest') + mostBonus(t, 'snyt') + (jt.vodnik ? VODNIK_POINTS : 0) + (+jt.mystery || 0) - latePenalty(+jt.late || 0);
   }
 
   const stepper = (t, field, value, label) => `<div class="stepper">
@@ -525,6 +529,7 @@
             <span>Šnyts (photos in chat)<br><span class="small muted" data-lead="snyt">${leadNote(t, 'snyt')}</span></span>
             ${stepper(t, 'snyt', +jt.snyt || 0, 'Šnyts')}
           </div>
+          <div class="j-row"><span>Vodníkovo sperma (+${VODNIK_POINTS})</span><button type="button" class="toggle" data-action="jflag" data-team="${t}" data-field="vodnik" aria-pressed="${!!jt.vodnik}">${jt.vodnik ? 'Yes' : 'No'}</button></div>
           <div class="j-row"><span>Mystery question</span>${seg(t, 'x', 'mystery', 5, +jt.mystery || 0)}</div>
           <div class="j-row">
             <span>Minutes late<br><span class="small muted" id="late-pen">Penalty −${latePenalty(late)}</span></span>
@@ -650,7 +655,7 @@
     extra(el, id) {
       const x = EXTRAS.find((e) => e.id === id);
       const note = (prog.extraDrafts[id] || '').trim();
-      const lines = [`🏰 Prague Quest · ${teamName()}`, `Extra: ${x.name}${x.points ? ` (+${x.points})` : ''}`, note ? `Note: ${note}` : null, id === 'cafe' ? `Table photo is in ${CONFIG.photoChatName}.` : null, `Sent ${timeStr(Date.now())}`].filter(Boolean);
+      const lines = [`🏰 Prague Quest · ${teamName()}`, `Extra: ${x.name}${x.points ? ` (+${x.points})` : ''}`, note ? `Note: ${note}` : null, id === 'cafe' ? `Table photo is in ${CONFIG.photoChatName}.` : id === 'vodnik' ? `Photo is in ${CONFIG.photoChatName}.` : null, `Sent ${timeStr(Date.now())}`].filter(Boolean);
       prog.extras[id] = Date.now();
       save();
       openWhatsApp(lines.join('\n'));
@@ -660,7 +665,7 @@
       if (!confirmTap(el, 'Tap again to play it (once per game)')) return;
       prog.sabotage = Date.now();
       save();
-      openWhatsApp(`🃏 ${teamName()} plays the SABOTAGE CARD on ${teamName(otherTeam())}! (${timeStr(Date.now())})\nJudge: please tell them they must drink a Hladinka 🍺`);
+      openWhatsApp(`🃏 ${teamName()} plays the SABOTAGE CARD on ${teamName(otherTeam())}! (${timeStr(Date.now())})\nJudge: please tell them to drink ${CONFIG.teams[otherTeam()].members.length} shots of "something local", with a photo in ${CONFIG.photoChatName} 🥃`);
       rerender();
     },
 
@@ -677,6 +682,12 @@
     jhint(el) {
       const { team: t, stop } = el.dataset;
       judge.teams[t].stops[stop] = Object.assign(jStop(t, stop), { hint: !jStop(t, stop).hint });
+      saveJudge();
+      rerender();
+    },
+    jflag(el) {
+      const { team: t, field } = el.dataset;
+      judge.teams[t][field] = !judge.teams[t][field];
       saveJudge();
       rerender();
     },

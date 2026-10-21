@@ -336,6 +336,9 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); box-sh
 .selfie-card .ic svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .selfie-card p { margin: 0; }
 
+.phrase { background: var(--surface-2); border-left: 3px solid var(--accent); border-radius: var(--radius-sm); padding: 10px 14px; margin: 0 0 12px; }
+.phrase p { margin: 4px 0 0; font-family: var(--font-display); font-size: 1.05rem; line-height: 1.35; }
+
 /* ---------- Rules ---------- */
 .score-table { width: 100%; border-collapse: collapse; font-size: .95rem; }
 .score-table td { padding: 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
