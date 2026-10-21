@@ -352,6 +352,8 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); box-sh
 .score-tile { padding: 14px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); text-align: center; }
 .score-tile .t { font-size: .85rem; color: var(--muted); font-weight: 600; }
 .score-tile .n { font: 700 2.4rem/1 var(--font-display); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.score-tile .stars { font-size: .8rem; color: var(--muted); margin-top: 6px; }
+.toggle.star[aria-pressed="true"] { background: var(--gold-soft); border-color: var(--gold); color: var(--gold); }
 .score-tile.lead { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 999px; background: var(--surface-2); margin-bottom: 14px; position: sticky; top: 8px; z-index: 5; }
 .tabs button { min-height: 42px; border: 0; border-radius: 999px; background: transparent; font-weight: 600; cursor: pointer; color: var(--muted); }

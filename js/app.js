@@ -219,7 +219,7 @@
             <ul class="facts">
               <li><b>6</b><span>stops, any order</span></li>
               <li><b>3 h</b><span>from ${esc(CONFIG.startPlace.split(',')[0])}</span></li>
-              <li><b>7</b><span>points per stop</span></li>
+              <li><b>3</b><span>points per stop</span></li>
               <li><b>0</b><span>points for speed</span></li>
             </ul>
             <ul class="rules-list" style="margin-top:14px">
@@ -348,7 +348,7 @@
             <textarea id="answer" data-draft="${id}" placeholder="Type your team's answer">${esc(prog.drafts[id] || '')}</textarea>
           </div>
           <div class="field">
-            <label for="bonus">Detail bonus <span class="muted small">(+1, optional)</span></label>
+            <label for="bonus">Detail question <span class="muted small">(+0, gold star ⭐)</span></label>
             <p class="help">${esc(s.bonus)}</p>
             <input type="text" id="bonus" data-bonus-draft="${id}" value="${esc(prog.bonusDrafts[id] || '')}" placeholder="Your detail answer, or 'in the photo'">
           </div>
@@ -373,7 +373,7 @@
         ${question}
         <section class="card selfie-card">
           <div class="ic">${ICON.camera}</div>
-          <div><h3>Team selfie (0–3 pts)</h3><p class="muted">Everyone except at most one teammate, plus the landmark, in the shot. Post it in ${photoChat()}. Most creative wins.</p></div>
+          <div><h3>Team selfie (no points)</h3><p class="muted">Get the team and the landmark in the shot, and post it in ${photoChat()}. Whoever takes the selfie with the most likes by the end of the night wins a shot 🥃</p></div>
         </section>
         ${roles ? `<section class="card"><h3>Roles at this stop</h3><ul class="roles">${roles.map((r) => `<li><b>${esc(r.role.name)}</b><span>${esc(r.person)}</span></li>`).join('')}</ul></section>` : ''}
       </div>
@@ -396,10 +396,10 @@
         <h2>Scoring</h2>
         <table class="score-table">
           <tr><td>Correct answer</td><td>3</td></tr>
-          <tr><td>Team selfie: everyone except at most one teammate (4 of 5, or 3 of 4), plus the landmark. The judge picks the most creative.</td><td>0–3</td></tr>
-          <tr><td>Detail bonus</td><td>1</td></tr>
+          <tr><td>Detail question: no points, but a gold star ⭐</td><td>0</td></tr>
+          <tr><td>Team selfie: no points. Whoever takes the selfie with the most likes by the end of the night wins a shot.</td><td>🥃</td></tr>
           <tr><td>Hint used</td><td>−1</td></tr>
-          <tr class="total"><td>Per stop / all six stops</td><td>7 / 42</td></tr>
+          <tr class="total"><td>Per stop / all six stops</td><td>3 / 18</td></tr>
         </table>
       </section>
       <section class="card">
@@ -453,8 +453,10 @@
     return j;
   }
   const saveJudge = () => store.set(J_KEY, judge);
-  const jStop = (t, id) => Object.assign({ answer: 0, selfie: 0, detail: 0, hint: false }, judge.teams[t].stops[id] || {});
-  const stopScore = (t, id) => { const s = jStop(t, id); return s.answer + s.selfie + s.detail - (s.hint ? 1 : 0); };
+  const jStop = (t, id) => Object.assign({ answer: 0, star: false, hint: false }, judge.teams[t].stops[id] || {});
+  // Selfies and detail questions score nothing; a detail answer earns a gold star instead.
+  const stopScore = (t, id) => { const s = jStop(t, id); return s.answer - (s.hint ? 1 : 0); };
+  const starCount = (t) => STOPS.filter((s) => jStop(t, s.id).star).length;
 
   // Drinking contests (šnyts, rest-stop Hladinkas): the highest count wins the bonus, a tie
   // gives it to every team on top, and nobody gets it while all counts are 0.
@@ -487,7 +489,7 @@
     const totals = Object.keys(CONFIG.teams).map((t) => [t, teamTotal(t)]);
     const max = Math.max(...totals.map(([, n]) => n));
     const tie = totals.every(([, n]) => n === max);
-    return totals.map(([t, n]) => `<div class="score-tile ${!tie && n === max ? 'lead' : ''}"><div class="t">${esc(teamName(t))}</div><div class="n" data-total="${t}">${n}</div></div>`).join('');
+    return totals.map(([t, n]) => `<div class="score-tile ${!tie && n === max ? 'lead' : ''}"><div class="t">${esc(teamName(t))}</div><div class="n" data-total="${t}">${n}</div><div class="stars">${starCount(t) ? `⭐ × ${starCount(t)}` : 'No gold stars yet'}</div></div>`).join('');
   }
 
   function viewJudge() {
@@ -500,11 +502,10 @@
         <div class="j-top"><h3>${s.id}. ${esc(s.name)}</h3><span class="j-sum" data-stopsum="${s.id}">${stopScore(t, s.id)}</span></div>
         <div class="j-sub">${esc(s.question)}</div>
         <div class="j-row"><span>Answer</span>${seg(t, s.id, 'answer', 3, sc.answer)}</div>
-        <div class="j-row"><span>Selfie</span>${seg(t, s.id, 'selfie', 3, sc.selfie)}</div>
-        <div class="j-row"><span>Detail bonus</span>${seg(t, s.id, 'detail', 1, sc.detail)}</div>
-        <div class="j-row"><span>Hint used (−1)</span><button type="button" class="toggle" data-action="jhint" data-team="${t}" data-stop="${s.id}" aria-pressed="${sc.hint}">${sc.hint ? 'Yes' : 'No'}</button></div>
+        <div class="j-row"><span>Hint used (−1)</span><button type="button" class="toggle" data-action="jtoggle" data-team="${t}" data-stop="${s.id}" data-field="hint" aria-pressed="${sc.hint}">${sc.hint ? 'Yes' : 'No'}</button></div>
+        <div class="j-row"><span>Detail: gold star (0 pts)</span><button type="button" class="toggle star" data-action="jtoggle" data-team="${t}" data-stop="${s.id}" data-field="star" aria-pressed="${sc.star}">${sc.star ? '⭐ Yes' : 'No'}</button></div>
         <details class="j-key"><summary>My answer key (saved only on this phone)</summary>
-          <input type="text" data-jkey="${s.id}" value="${esc(judge.key[s.id] || '')}" placeholder="Answer + detail bonus notes" autocomplete="off">
+          <input type="text" data-jkey="${s.id}" value="${esc(judge.key[s.id] || '')}" placeholder="Answer + detail question notes" autocomplete="off">
         </details>
       </section>`;
     }).join('');
@@ -628,7 +629,7 @@
         `🏰 Prague Quest · ${teamName()}`,
         `Stop ${id}: ${s.name}`,
         `Answer: ${answer}`,
-        bonus ? `Detail bonus: ${bonus}` : null,
+        bonus ? `Detail (⭐): ${bonus}` : null,
         `Hint used: ${prog.hints[id] ? 'yes (−1)' : 'no'}`,
         `Sent ${timeStr(Date.now())}`,
       ].filter(Boolean);
@@ -681,9 +682,9 @@
       saveJudge();
       rerender();
     },
-    jhint(el) {
-      const { team: t, stop } = el.dataset;
-      judge.teams[t].stops[stop] = Object.assign(jStop(t, stop), { hint: !jStop(t, stop).hint });
+    jtoggle(el) {
+      const { team: t, stop, field } = el.dataset;
+      judge.teams[t].stops[stop] = Object.assign(jStop(t, stop), { [field]: !jStop(t, stop)[field] });
       saveJudge();
       rerender();
     },

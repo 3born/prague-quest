@@ -33,7 +33,7 @@ window.PQ = {
 
   ROLES: [
     { name: 'Navigator', does: 'Leads the way and keeps an eye on the map.' },
-    { name: 'Photographer', does: 'Frames the team selfie and posts it to the Facebook chat.' },
+    { name: 'Photographer', does: 'Takes the team selfie and posts it to the Facebook chat. Most likes by the end of the night wins a shot.' },
     { name: 'Riddle-solver', does: 'Reads the question aloud and leads the hunt for the answer.' },
     { name: 'Translator', does: 'Handles Czech signs, menus and talking to locals.' },
     { name: 'Scorekeeper', does: 'Types the answer and taps "Send to judge".' },
