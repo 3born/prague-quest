@@ -114,8 +114,10 @@ window.PQ = {
   },
 
   EXTRAS: [
-    { id: 'cafe', name: 'Rest stop', points: 2, text: 'Sit down for 15 minutes. The team that drinks the most Hladinkas at its rest stop gets +2 (a tie gives both teams the points). Post a photo of your table in the Facebook chat.' },
+    { id: 'cafe', name: 'Rest stop', points: 2, text: 'Sit down for 15 minutes. The team that drinks the most Hladinkas at its rest stop gets +2 (a tie gives both teams the points). Post a photo of your table in the Facebook chat.',
+      link: { label: 'What\'s a Hladinka? Pilsner Urquell\'s three pours →', url: 'https://www.pilsnerurquell.com/stories/foam-is-flavour-three-pilsner-urquell-pours/' } },
     { id: 'local', name: 'Local challenge', points: 0, text: 'Just for fun: order something in Czech, or ask a local for their favourite spot in Prague.' },
-    { id: 'vodnik', name: 'Vodníkovo sperma', points: 1, text: 'Drink a Vodníkovo sperma at any point during the quest. Post a photo in the Facebook chat as evidence.' },
+    { id: 'vodnik', name: 'Vodníkovo sperma', points: 1, text: 'Drink a Vodníkovo sperma at any point during the quest. Post a photo in the Facebook chat as evidence.',
+      note: 'Googling is allowed for this one! We\'re honestly not sure this drink is real, or if someone on the internet is messing with us.' },
   ],
 };

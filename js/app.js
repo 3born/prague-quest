@@ -226,7 +226,7 @@
               <li>Tap <b>We're here</b> at a spot to unlock its question.</li>
               <li>Send your answer to the judge on WhatsApp. All photos go in ${photoChat()}.</li>
               <li>Hints cost 1 point. Arriving late costs 2 points per 5 minutes after a 5-minute grace.</li>
-              <li>No googling. Stay together. Cross roads safely.</li>
+              <li>No googling (except to find a Vodníkovo sperma). Stay together. Cross roads safely.</li>
             </ul>
             <a class="btn ghost block" href="#rules" style="margin-top:12px">Full rules</a>
           </section>
@@ -282,6 +282,8 @@
           <h3>${esc(x.name)}</h3><span class="chip ${sent ? 'done' : ''}">${sent ? 'Sent ' + timeStr(sent) : (x.points ? `+${x.points} pt${x.points === 1 ? '' : 's'}` : 'Just for fun')}</span>
         </div>
         <p class="muted">${esc(x.text)}</p>
+        ${x.note ? `<p class="hint-box">${esc(x.note)}</p>` : ''}
+        ${x.link ? `<p><a class="small" href="${esc(x.link.url)}" target="_blank" rel="noopener">${esc(x.link.label)}</a></p>` : ''}
         <div class="field"><input type="text" data-extra-draft="${x.id}" value="${esc(prog.extraDrafts[x.id] || '')}" placeholder="${x.id === 'cafe' ? 'Where, and how many Hladinkas?' : 'What happened?'}" aria-label="${esc(x.name)} note"></div>
         <button class="btn ${sent ? 'ghost' : ''} block" data-action="extra" data-id="${x.id}" style="margin-top:10px">${ICON.send} ${sent ? 'Send again' : 'Send to judge'}</button>
       </div>`;
@@ -405,7 +407,7 @@
         <table class="score-table">
           <tr><td>Rest stop: 15 minutes sitting down, with a photo of your table. The team that drinks the most Hladinkas there wins (a tie gives both teams the points).</td><td>+2</td></tr>
           <tr><td>Local challenge, just for fun: order in Czech, or ask a local for their favourite spot</td><td>+0</td></tr>
-          <tr><td>Vodníkovo sperma: drink one at any point during the quest, with a photo in ${photoChat()}</td><td>+1</td></tr>
+          <tr><td>Vodníkovo sperma: drink one at any point during the quest, with a photo in ${photoChat()}. Googling is allowed for this one, since we're not sure it's real.</td><td>+1</td></tr>
           <tr><td>Mystery question at the finish, combining details from two stops</td><td>+5</td></tr>
           <tr><td>Šnyt challenge: the team with the most šnyts by the finish (a photo of each in ${photoChat()}; a tie gives both teams the points). <a href="${esc(SNYT.url)}" target="_blank" rel="noopener">What's a šnyt?</a></td><td>+${SNYT.points}</td></tr>
         </table>
@@ -427,7 +429,7 @@
       <section class="card">
         <h2>Fair play</h2>
         <ul class="rules-list">
-          <li>No googling the answers.</li>
+          <li>No googling the answers. Googling is fine for the Vodníkovo sperma bonus.</li>
           <li>No buying tickets to get an answer.</li>
           <li>Stay together as a team, and cross roads safely.</li>
           <li>The judge's decision is final. Tiebreaker: best selfie, by vote.</li>
