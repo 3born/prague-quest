@@ -191,6 +191,18 @@
     setTimeout(() => { map.invalidateSize(); fit(); }, 150);
   }
 
+  function mountHomeMap(el) {
+    if (typeof L === 'undefined') { el.innerHTML = '<p class="page muted">The map could not load. Check your connection.</p>'; return; }
+    const h = CONFIG.home;
+    map = L.map(el, { zoomControl: false, scrollWheelZoom: false }).setView([h.lat, h.lng], 16);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    setTiles();
+    const icon = L.divIcon({ className: 'pin-wrap', html: '<div class="pin pin-home"><span>⌂</span></div>', iconSize: [36, 42], iconAnchor: [18, 40], popupAnchor: [0, -38] });
+    L.marker([h.lat, h.lng], { icon, title: h.name, alt: 'Home' }).addTo(map)
+      .bindPopup(`<div class="pop"><div class="pop-num">Home</div><strong>${esc(h.name)}</strong><p>${esc(h.address)}</p></div>`);
+    setTimeout(() => map && map.invalidateSize(), 150);
+  }
+
   function unmountMap() {
     if (map) { map.remove(); map = null; tileLayer = null; }
   }
@@ -377,6 +389,34 @@
         </section>
         ${roles ? `<section class="card"><h3>Roles at this stop</h3><ul class="roles">${roles.map((r) => `<li><b>${esc(r.role.name)}</b><span>${esc(r.person)}</span></li>`).join('')}</ul></section>` : ''}
       </div>
+    </div>`;
+  }
+
+  function viewTakeMeHome() {
+    const h = CONFIG.home;
+    const walk = `https://www.google.com/maps/dir/?api=1&destination=${h.lat},${h.lng}&travelmode=walking`;
+    return `<div class="page stack">
+      <div class="page-head"><div><div class="eyebrow">After the pub</div><h1>Take me home</h1></div></div>
+      <section class="card stack">
+        <div>
+          <div class="q-label">We live at</div>
+          <p class="address">${esc(h.address)}</p>
+          <p class="small muted" style="margin:0">${esc(h.name)}</p>
+        </div>
+        <div class="btn-row">
+          <a class="btn primary" href="${esc(walk)}" target="_blank" rel="noopener">${ICON.pin} Walk home</a>
+          <a class="btn" href="${esc(h.mapsUrl)}" target="_blank" rel="noopener">Google Maps</a>
+        </div>
+        <button class="btn ghost block" data-action="gps" data-id="home">${ICON.gps} How far is home?</button>
+        <div class="gps-out" id="gps-out" aria-live="polite"></div>
+      </section>
+      <div class="map-mini" id="home-map" role="region" aria-label="Map showing home"></div>
+      <section class="card">
+        <h3>Taking a taxi?</h3>
+        <p class="muted">Show the driver this screen, or say:</p>
+        <div class="phrase"><span class="q-label">Say</span><p lang="cs">${esc(h.taxiPhrase)}</p></div>
+        <p class="small muted" style="margin:0">Bolt or Uber gives you a fixed price. Taxis hailed on the street can overcharge.</p>
+      </section>
     </div>`;
   }
 
@@ -583,8 +623,10 @@
 
     const stopMatch = h.match(/^stop-(\d+)$/);
     let tab = h;
-    const landing = !team && h !== 'judge';
+    // The judge page and "Take me home" work without picking a team.
+    const landing = !team && h !== 'judge' && h !== 'take-me-home';
     if (h === 'judge') render(viewJudge(), opts);
+    else if (h === 'take-me-home') { render(viewTakeMeHome(), opts); mountHomeMap(document.getElementById('home-map')); }
     else if (landing) render(viewLanding(), opts);
     else if (h === 'stops') render(viewStops(), opts);
     else if (stopMatch) { render(viewStop(+stopMatch[1]), opts); tab = 'stops'; }
@@ -640,7 +682,7 @@
     },
     gps(el, id) {
       const out = document.getElementById('gps-out');
-      const s = stopById(id);
+      const s = id === 'home' ? CONFIG.home : stopById(id);
       if (!('geolocation' in navigator)) { out.textContent = 'GPS isn\'t available on this device. No problem, it\'s only a hint.'; return; }
       out.className = 'gps-out';
       out.textContent = 'Finding you…';

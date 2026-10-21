@@ -339,6 +339,12 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); box-sh
 .phrase { background: var(--surface-2); border-left: 3px solid var(--accent); border-radius: var(--radius-sm); padding: 10px 14px; margin: 0 0 12px; }
 .phrase p { margin: 4px 0 0; font-family: var(--font-display); font-size: 1.05rem; line-height: 1.35; }
 
+/* ---------- Take me home ---------- */
+.address { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; line-height: 1.2; margin: 4px 0 4px; }
+.map-mini { height: 260px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow); }
+.pin.pin-home { background: var(--ok); }
+.pin.pin-home span { font-size: 20px; }
+
 /* ---------- Rules ---------- */
 .score-table { width: 100%; border-collapse: collapse; font-size: .95rem; }
 .score-table td { padding: 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }

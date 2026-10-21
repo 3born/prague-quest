@@ -16,6 +16,14 @@ window.PQ = {
     // an "Open photo chat" button.
     photoChatName: 'the Facebook chat',
     photoChatUrl: '',
+    // "Take me home" page. Coordinates are from the Google Maps link.
+    home: {
+      name: 'Moonlight Apartments Old Town',
+      address: 'Masná 5, Prague 1, Czech Republic',
+      taxiPhrase: 'Masná 5, Praha 1, prosím.',
+      lat: 50.0895271, lng: 14.4237107,
+      mapsUrl: 'https://maps.app.goo.gl/vbJgv8ex9P6rjXgf7',
+    },
     teams: {
       // shotPhrase is used when this team gets sabotaged (Czech: "čtyři panáky", but "pět panáků").
       a: {
