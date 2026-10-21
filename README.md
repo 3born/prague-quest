@@ -11,7 +11,7 @@ Live at `https://3born.github.io/prague-quest/` once Pages is enabled.
 | Team B | `https://3born.github.io/prague-quest/#team-b` |
 | Judge | `https://3born.github.io/prague-quest/#judge` (don't share) |
 
-The site opens on a landing page with both team rosters. Players tap their team, or open a team link, which picks the team directly. There are no passwords: everything is stored on each phone, so there's nothing to protect. Answers from teams go to the judge's WhatsApp number (`judgePhone`). All photos go to the Facebook chat (`photoChatName`, plus an optional `photoChatUrl` to link it).
+The site is invite-only. Opening the invite link (`#key=<uuid>`, kept in the gitignored `INVITE.local.txt`) unlocks that phone and goes to the landing page. Without it, visitors see an "invite only" page. Only a hash of the key is in `js/data.js` (`accessHash`). This hides the site from people who stumble on the URL, not from someone reading this public repo. After unlocking, players tap their team, or open a team link, which picks the team directly. Answers from teams go to the judge's WhatsApp number (`judgePhone`). All photos go to the Facebook chat (`photoChatName`, plus an optional `photoChatUrl` to link it).
 
 "Not your team? Switch" logs that phone out. Its progress stays saved for when the team logs back in. Team progress is saved in `localStorage` on each phone. Judge scores and the judge's answer key are saved only on the judge's phone.
 

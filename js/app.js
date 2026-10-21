@@ -24,6 +24,13 @@
   // Team messages go to the judge's number; the judge's own "share scores" picks a chat.
   const waLink = (text, phone = '') => `https://wa.me/${phone}?text=` + encodeURIComponent(text);
   const openWhatsApp = (text, phone = CONFIG.judgePhone) => window.open(waLink(text, phone), '_blank', 'noopener');
+  async function sha256(s) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  // A phone stays unlocked until accessHash changes in data.js.
+  const unlocked = () => store.get('pq:access', null) === CONFIG.accessHash;
+
   const photoChat = () => (CONFIG.photoChatUrl
     ? `<a href="${esc(CONFIG.photoChatUrl)}" target="_blank" rel="noopener">${esc(CONFIG.photoChatName)}</a>`
     : esc(CONFIG.photoChatName));
@@ -249,6 +256,18 @@
   }
 
   // ---------- Landing ----------
+  function viewLocked(message) {
+    return `<div class="page stack landing">
+      <header class="hero">
+        <img class="landing-logo" src="icon.svg" alt="">
+        <div class="eyebrow">Invite only</div>
+        <h1>Prague City Quest</h1>
+        <p class="lede">This is a private game. Open the invite link you got from the organiser to get in.</p>
+      </header>
+      ${message ? `<p class="gate-msg" role="alert">${esc(message)}</p>` : ''}
+    </div>`;
+  }
+
   function viewLanding() {
     const teams = Object.entries(CONFIG.teams).map(([k, t]) => `
       <section class="card team-card">
@@ -604,8 +623,28 @@
     window.scrollTo(0, keepScroll ? y : 0);
   }
 
+  function showLocked(message) {
+    render(viewLocked(message));
+    document.body.classList.add('no-tabbar');
+    document.title = 'Prague City Quest';
+  }
+
+  async function unlock(key) {
+    // Drop the key from the address bar right away so it doesn't end up in screenshots.
+    history.replaceState(null, '', '#home');
+    if (!window.crypto?.subtle) return showLocked('Open the https:// link to get in.');
+    if ((await sha256('pq:' + key.trim().toLowerCase())) !== CONFIG.accessHash) {
+      return showLocked('That invite link isn\'t valid. Ask the organiser for the current one.');
+    }
+    store.set('pq:access', CONFIG.accessHash);
+    route();
+  }
+
   function route(opts) {
     const h = decodeURIComponent(location.hash.slice(1)) || 'home';
+    const keyMatch = h.match(/^key=([\w-]+)$/);
+    if (keyMatch) { unlock(keyMatch[1]); return; }
+    if (!unlocked()) { showLocked(); return; }
     const teamMatch = h.match(/^team-(\w+)$/);
     if (teamMatch && CONFIG.teams[teamMatch[1]]) {
       if (team !== teamMatch[1]) { setTeam(teamMatch[1]); toast(`Welcome, ${teamName()}!`); }

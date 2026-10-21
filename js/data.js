@@ -10,6 +10,10 @@ window.PQ = {
     // CARTO basemaps now need a free key (https://carto.com/basemaps/apikey). Paste it here and
     // restrict it to 3born.github.io in the CARTO dashboard. Empty = OpenStreetMap tiles instead.
     cartoKey: '',
+    // Invite-only: the site unlocks when opened with #key=<uuid>. Only the SHA-256 of
+    // 'pq:' + uuid is stored here; the link itself is in INVITE.local.txt (not in git).
+    // This hides the site from people who stumble on the URL, not from someone reading this repo.
+    accessHash: '4dcee8d06d13a0474bb66d6fe319b26b70eae9d646b9e0f8b20d2b499ef68be0',
     // WhatsApp number answers are sent to (country code, no + or spaces).
     judgePhone: '',
     // All photos go to the Facebook chat. Optional: paste its Messenger link (m.me/...) to show
