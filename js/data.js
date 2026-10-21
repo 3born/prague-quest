@@ -101,7 +101,7 @@ window.PQ = {
   },
 
   EXTRAS: [
-    { id: 'cafe', name: 'Rest stop', points: 2, text: 'Sit down at a café for 15 minutes. Post a photo of your table in the Facebook chat.' },
-    { id: 'local', name: 'Local challenge', points: 2, text: 'Order something in Czech, or ask a local for their favourite spot in Prague.' },
+    { id: 'cafe', name: 'Rest stop', points: 2, text: 'Sit down for 15 minutes. The team that drinks the most Hladinkas at its rest stop gets +2 (a tie gives both teams the points). Post a photo of your table in the Facebook chat.' },
+    { id: 'local', name: 'Local challenge', points: 0, text: 'Just for fun: order something in Czech, or ask a local for their favourite spot in Prague.' },
   ],
 };

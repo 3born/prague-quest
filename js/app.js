@@ -279,10 +279,10 @@
       const sent = prog.extras[x.id];
       return `<div class="card">
         <div class="j-top" style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
-          <h3>${esc(x.name)}</h3><span class="chip ${sent ? 'done' : ''}">${sent ? 'Sent ' + timeStr(sent) : '+' + x.points + ' pts'}</span>
+          <h3>${esc(x.name)}</h3><span class="chip ${sent ? 'done' : ''}">${sent ? 'Sent ' + timeStr(sent) : (x.points ? '+' + x.points + ' pts' : 'Just for fun')}</span>
         </div>
         <p class="muted">${esc(x.text)}</p>
-        <div class="field"><input type="text" data-extra-draft="${x.id}" value="${esc(prog.extraDrafts[x.id] || '')}" placeholder="${x.id === 'cafe' ? 'Which café?' : 'What happened?'}" aria-label="${esc(x.name)} note"></div>
+        <div class="field"><input type="text" data-extra-draft="${x.id}" value="${esc(prog.extraDrafts[x.id] || '')}" placeholder="${x.id === 'cafe' ? 'Where, and how many Hladinkas?' : 'What happened?'}" aria-label="${esc(x.name)} note"></div>
         <button class="btn ${sent ? 'ghost' : ''} block" data-action="extra" data-id="${x.id}" style="margin-top:10px">${ICON.send} ${sent ? 'Send again' : 'Send to judge'}</button>
       </div>`;
     }).join('');
@@ -314,7 +314,7 @@
         </div>
         <div class="card">
           <h3>Sabotage card</h3>
-          <p class="muted">Once per game. ${esc(teamName(other))} must wait 5 minutes before sending their next answer.</p>
+          <p class="muted">Once per game. ${esc(teamName(other))} must drink a Hladinka.</p>
           ${sab}
         </div>
       </div>
@@ -402,8 +402,8 @@
       <section class="card">
         <h2>Extras</h2>
         <table class="score-table">
-          <tr><td>Rest stop: 15 minutes at a café, with a photo of your table</td><td>+2</td></tr>
-          <tr><td>Local challenge: order in Czech, or ask a local for their favourite spot</td><td>+2</td></tr>
+          <tr><td>Rest stop: 15 minutes sitting down, with a photo of your table. The team that drinks the most Hladinkas there wins (a tie gives both teams the points).</td><td>+2</td></tr>
+          <tr><td>Local challenge, just for fun: order in Czech, or ask a local for their favourite spot</td><td>+0</td></tr>
           <tr><td>Mystery question at the finish, combining details from two stops</td><td>+5</td></tr>
           <tr><td>Šnyt challenge: the team with the most šnyts by the finish (a photo of each in ${photoChat()}; a tie gives both teams the points). <a href="${esc(SNYT.url)}" target="_blank" rel="noopener">What's a šnyt?</a></td><td>+${SNYT.points}</td></tr>
         </table>
@@ -415,7 +415,7 @@
       </section>
       <section class="card">
         <h2>Sabotage card</h2>
-        <p style="margin:0">Each team can play it once. The other team must wait 5 minutes before sending its next answer.</p>
+        <p style="margin:0">Each team can play it once. The other team must drink a Hladinka.</p>
       </section>
       <section class="card">
         <h2>Roles rotate every stop</h2>
@@ -435,7 +435,7 @@
 
   // ---------- Judge ----------
   const J_KEY = 'pq:judge';
-  const blankJudgeTeam = () => ({ stops: {}, cafe: false, local: false, mystery: 0, late: 0, snyt: 0 });
+  const blankJudgeTeam = () => ({ stops: {}, rest: 0, mystery: 0, late: 0, snyt: 0 });
   let judge = loadJudge();
 
   function loadJudge() {
@@ -450,17 +450,20 @@
   const jStop = (t, id) => Object.assign({ answer: 0, selfie: 0, detail: 0, hint: false }, judge.teams[t].stops[id] || {});
   const stopScore = (t, id) => { const s = jStop(t, id); return s.answer + s.selfie + s.detail - (s.hint ? 1 : 0); };
 
-  // Most šnyts wins the bonus; a tie gives it to every team on top (none if nobody has any).
-  function snytBonus(t) {
-    const counts = Object.values(judge.teams).map((jt) => +jt.snyt || 0);
-    const mine = +judge.teams[t].snyt || 0;
-    return mine > 0 && mine === Math.max(...counts) ? SNYT.points : 0;
+  // Drinking contests (šnyts, rest-stop Hladinkas): the highest count wins the bonus, a tie
+  // gives it to every team on top, and nobody gets it while all counts are 0.
+  const REST_POINTS = EXTRAS.find((x) => x.id === 'cafe').points;
+  const CONTESTS = { snyt: SNYT.points, rest: REST_POINTS };
+  function mostBonus(t, field) {
+    const counts = Object.values(judge.teams).map((jt) => +jt[field] || 0);
+    const mine = +judge.teams[t][field] || 0;
+    return mine > 0 && mine === Math.max(...counts) ? CONTESTS[field] : 0;
   }
 
   function teamTotal(t) {
     const jt = judge.teams[t];
     const stops = STOPS.reduce((sum, s) => sum + stopScore(t, s.id), 0);
-    return stops + (jt.cafe ? 2 : 0) + (jt.local ? 2 : 0) + (+jt.mystery || 0) + snytBonus(t) - latePenalty(+jt.late || 0);
+    return stops + mostBonus(t, 'rest') + mostBonus(t, 'snyt') + (+jt.mystery || 0) - latePenalty(+jt.late || 0);
   }
 
   const stepper = (t, field, value, label) => `<div class="stepper">
@@ -468,7 +471,7 @@
       <input type="number" inputmode="numeric" min="0" data-jstep="${field}" data-team="${t}" value="${value}" aria-label="${label}">
       <button type="button" data-action="jstep" data-team="${t}" data-field="${field}" data-delta="1" aria-label="${label} plus one">+</button>
     </div>`;
-  const snytNote = (t) => (snytBonus(t) ? `In the lead: +${SNYT.points}` : 'Not in the lead');
+  const leadNote = (t, field) => (mostBonus(t, field) ? `In the lead: +${CONTESTS[field]}` : 'Not in the lead');
 
   const seg = (t, id, field, max, value) => `<div class="seg" role="group" aria-label="${field}">${
     Array.from({ length: max + 1 }, (_, v) => `<button type="button" data-action="jset" data-team="${t}" data-stop="${id}" data-field="${field}" data-val="${v}" aria-pressed="${value === v}">${v}</button>`).join('')
@@ -514,13 +517,15 @@
         ${stops}
         <section class="card">
           <h3>Extras</h3>
-          <div class="j-row"><span>Rest stop (+2)</span><button type="button" class="toggle" data-action="jflag" data-team="${t}" data-field="cafe" aria-pressed="${jt.cafe}">${jt.cafe ? 'Yes' : 'No'}</button></div>
-          <div class="j-row"><span>Local challenge (+2)</span><button type="button" class="toggle" data-action="jflag" data-team="${t}" data-field="local" aria-pressed="${jt.local}">${jt.local ? 'Yes' : 'No'}</button></div>
-          <div class="j-row"><span>Mystery question</span>${seg(t, 'x', 'mystery', 5, +jt.mystery || 0)}</div>
           <div class="j-row">
-            <span>Šnyts (photos in chat)<br><span class="small muted" id="snyt-note">${snytNote(t)}</span></span>
+            <span>Rest-stop Hladinkas<br><span class="small muted" data-lead="rest">${leadNote(t, 'rest')}</span></span>
+            ${stepper(t, 'rest', +jt.rest || 0, 'Rest-stop Hladinkas')}
+          </div>
+          <div class="j-row">
+            <span>Šnyts (photos in chat)<br><span class="small muted" data-lead="snyt">${leadNote(t, 'snyt')}</span></span>
             ${stepper(t, 'snyt', +jt.snyt || 0, 'Šnyts')}
           </div>
+          <div class="j-row"><span>Mystery question</span>${seg(t, 'x', 'mystery', 5, +jt.mystery || 0)}</div>
           <div class="j-row">
             <span>Minutes late<br><span class="small muted" id="late-pen">Penalty −${latePenalty(late)}</span></span>
             ${stepper(t, 'late', late, 'Minutes late')}
@@ -538,8 +543,7 @@
   function refreshJudgeTotals() {
     const sb = document.getElementById('scoreboard');
     if (sb) sb.innerHTML = scoreboardHtml();
-    const snyt = document.getElementById('snyt-note');
-    if (snyt) snyt.textContent = snytNote(judge.tab);
+    document.querySelectorAll('[data-lead]').forEach((el) => { el.textContent = leadNote(judge.tab, el.dataset.lead); });
     const pen = document.getElementById('late-pen');
     if (pen) pen.textContent = `Penalty −${latePenalty(+judge.teams[judge.tab].late || 0)}`;
   }
@@ -646,7 +650,7 @@
     extra(el, id) {
       const x = EXTRAS.find((e) => e.id === id);
       const note = (prog.extraDrafts[id] || '').trim();
-      const lines = [`🏰 Prague Quest · ${teamName()}`, `Extra: ${x.name} (+${x.points})`, note ? `Note: ${note}` : null, id === 'cafe' ? `Table photo is in ${CONFIG.photoChatName}.` : null, `Sent ${timeStr(Date.now())}`].filter(Boolean);
+      const lines = [`🏰 Prague Quest · ${teamName()}`, `Extra: ${x.name}${x.points ? ` (+${x.points})` : ''}`, note ? `Note: ${note}` : null, id === 'cafe' ? `Table photo is in ${CONFIG.photoChatName}.` : null, `Sent ${timeStr(Date.now())}`].filter(Boolean);
       prog.extras[id] = Date.now();
       save();
       openWhatsApp(lines.join('\n'));
@@ -656,7 +660,7 @@
       if (!confirmTap(el, 'Tap again to play it (once per game)')) return;
       prog.sabotage = Date.now();
       save();
-      openWhatsApp(`🃏 ${teamName()} plays the SABOTAGE CARD on ${teamName(otherTeam())}! (${timeStr(Date.now())})\nJudge: please tell them to wait 5 minutes before sending their next answer.`);
+      openWhatsApp(`🃏 ${teamName()} plays the SABOTAGE CARD on ${teamName(otherTeam())}! (${timeStr(Date.now())})\nJudge: please tell them they must drink a Hladinka 🍺`);
       rerender();
     },
 
@@ -673,12 +677,6 @@
     jhint(el) {
       const { team: t, stop } = el.dataset;
       judge.teams[t].stops[stop] = Object.assign(jStop(t, stop), { hint: !jStop(t, stop).hint });
-      saveJudge();
-      rerender();
-    },
-    jflag(el) {
-      const { team: t, field } = el.dataset;
-      judge.teams[t][field] = !judge.teams[t][field];
       saveJudge();
       rerender();
     },
