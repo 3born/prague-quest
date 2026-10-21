@@ -205,7 +205,6 @@ details.names[open] summary::after { content: '–'; }
 /* ---------- Landing & login ---------- */
 .landing { padding-top: calc(28px + env(safe-area-inset-top)); }
 .landing-logo { width: 56px; height: 56px; border-radius: 16px; display: block; margin-bottom: 16px; box-shadow: var(--shadow); }
-.gate-msg { color: var(--danger); font-weight: 500; margin: 0; }
 .team-card { transition: border-color .15s, box-shadow .15s; }
 .team-card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 12px; }
 .team-card-top h2 { margin: 0; }
