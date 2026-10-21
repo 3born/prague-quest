@@ -202,6 +202,31 @@ details.names summary::after { content: '+'; font-size: 1.4rem; color: var(--mut
 details.names[open] summary::after { content: '–'; }
 .names-grid { display: grid; gap: 8px; margin-top: 12px; }
 
+/* ---------- Landing & login ---------- */
+.landing { padding-top: calc(28px + env(safe-area-inset-top)); }
+.landing-logo { width: 56px; height: 56px; border-radius: 16px; display: block; margin-bottom: 16px; box-shadow: var(--shadow); }
+.team-card { transition: border-color .15s, box-shadow .15s; }
+.team-card.selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow); }
+.team-card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+.team-card-top h2 { margin: 0; }
+.members { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.members li {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 4px 12px 4px 4px; border-radius: 999px;
+  background: var(--surface-2); font-weight: 500;
+}
+.avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--accent); color: var(--on-accent);
+  font: 700 .8rem/1 var(--font-body);
+}
+.gate label { display: block; font-weight: 600; margin-bottom: 8px; }
+.gate-row { display: flex; gap: 8px; }
+.gate-row input { flex: 1; min-width: 0; }
+.gate-row .btn { flex: none; }
+.gate-err { color: var(--danger); font-size: .9rem; font-weight: 500; margin: 8px 0 0; }
+
 /* ---------- Map pins ---------- */
 .pin-wrap { background: none; border: 0; }
 .pin {
@@ -296,7 +321,7 @@ details.names[open] summary::after { content: '–'; }
 .hint-box b { color: var(--gold); }
 .field label { display: block; font-weight: 600; margin-bottom: 6px; }
 .field .help { font-size: .85rem; color: var(--muted); margin: -2px 0 8px; }
-input[type="text"], input[type="number"], textarea {
+input[type="text"], input[type="password"], input[type="number"], textarea {
   width: 100%; padding: 12px 14px;
   border: 1px solid var(--line); border-radius: var(--radius-sm);
   background: var(--bg); font-size: 16px;

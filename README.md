@@ -11,7 +11,9 @@ Live at `https://3born.github.io/prague-quest/` once Pages is enabled.
 | Team B | `https://3born.github.io/prague-quest/#team-b` |
 | Judge | `https://3born.github.io/prague-quest/#judge` (don't share) |
 
-Team progress is saved in `localStorage` on each phone. Judge scores and the judge's answer key are saved only on the judge's phone.
+The site opens on a landing page with both team rosters. Players tap their team and enter its code. A team link opens that team's code box directly. The judge page has its own code. Codes are stored only as SHA-256 hashes in `js/data.js`. This keeps casual visitors out, but it isn't real security: the repo is public. The plain codes are in `PASSCODES.local.txt`, which is gitignored. Answers from teams go to the judge's WhatsApp number (`judgePhone`).
+
+"Not your team? Switch" logs that phone out. Its progress stays saved for when the team logs back in. Team progress is saved in `localStorage` on each phone. Judge scores and the judge's answer key are saved only on the judge's phone.
 
 **No answers are in this repo.** The judge can type the answer key into the judge page (under "My answer key"). It is stored only in that browser.
 

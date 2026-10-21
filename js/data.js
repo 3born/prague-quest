@@ -10,9 +10,22 @@ window.PQ = {
     // CARTO basemaps now need a free key (https://carto.com/basemaps/apikey). Paste it here and
     // restrict it to 3born.github.io in the CARTO dashboard. Empty = OpenStreetMap tiles instead.
     cartoKey: '',
+    // WhatsApp number answers are sent to (country code, no + or spaces).
+    judgePhone: '',
+    // Passcodes are stored as SHA-256 of 'pq:' + lowercase code. This only keeps casual
+    // visitors out: it is not real security. Plain codes live in PASSCODES.local.txt (not in git).
+    judgeCodeHash: 'd7ade706d7204c65f624c6897a04e98d4f92c3038d02aa389b7804574f7fb353',
     teams: {
-      a: { name: 'Team A' },
-      b: { name: 'Team B' },
+      a: {
+        name: 'Team A',
+        members: ['Fredrik', 'Fanny', 'Tessan', 'Måns'],
+        codeHash: '396310bee76c3d8445f91c2f67358e356411e899468ea4757e4c3e02f98bd984',
+      },
+      b: {
+        name: 'Team B',
+        members: ['Calle', 'Axel', 'Maja', 'Eskil', 'Brorsson'],
+        codeHash: 'fa8b08d22dd600f5cb19d6e42adf2dc1ee756b05613d25e9b0ef3e92a095e731',
+      },
     },
   },
 

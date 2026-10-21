@@ -21,8 +21,15 @@
   const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   const timeStr = (ts) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const stopById = (id) => STOPS.find((s) => s.id === id);
-  const waLink = (text) => 'https://wa.me/?text=' + encodeURIComponent(text);
-  const openWhatsApp = (text) => window.open(waLink(text), '_blank', 'noopener');
+  // Team messages go to the judge's number; the judge's own "share scores" picks a chat.
+  const waLink = (text, phone = '') => `https://wa.me/${phone}?text=` + encodeURIComponent(text);
+  const openWhatsApp = (text, phone = CONFIG.judgePhone) => window.open(waLink(text, phone), '_blank', 'noopener');
+
+  async function sha256(s) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  const codeMatches = async (code, hash) => (await sha256('pq:' + code.trim().toLowerCase())) === hash;
 
   const ICON = {
     chev: '<svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>',
@@ -57,16 +64,18 @@
   }
 
   // ---------- Team & progress ----------
+  // A phone stays logged in until "Switch team". Changing a code in data.js logs everyone out.
   let team = store.get('pq:team', null);
-  if (team && !CONFIG.teams[team]) team = null;
+  if (team && (!CONFIG.teams[team] || store.get('pq:teamAuth', null) !== CONFIG.teams[team].codeHash)) team = null;
   let prog = loadProgress(team);
+  const judgeAuthed = () => store.get('pq:judgeAuth', null) === CONFIG.judgeCodeHash;
 
   function loadProgress(t) {
-    const blank = { arrived: {}, hints: {}, drafts: {}, bonusDrafts: {}, sent: {}, extras: {}, extraDrafts: {}, sabotage: null, names: ['', '', '', '', ''] };
+    const blank = { arrived: {}, hints: {}, drafts: {}, bonusDrafts: {}, sent: {}, extras: {}, extraDrafts: {}, sabotage: null };
     return t ? Object.assign(blank, store.get('pq:progress:' + t, {})) : blank;
   }
   function save() { if (team) store.set('pq:progress:' + team, prog); }
-  function setTeam(t) { team = t; store.set('pq:team', t); prog = loadProgress(t); }
+  function setTeam(t) { team = t; store.set('pq:team', t); store.set('pq:teamAuth', CONFIG.teams[t].codeHash); prog = loadProgress(t); }
   const teamName = (t = team) => (t ? CONFIG.teams[t].name : '');
   const otherTeam = () => Object.keys(CONFIG.teams).find((t) => t !== team);
 
@@ -80,12 +89,13 @@
 
   // Roles rotate one step per stop, in the order the team arrives at stops.
   function rolesFor(id) {
-    const names = prog.names.map((n) => n.trim());
-    if (!names.some(Boolean)) return null;
+    const names = CONFIG.teams[team].members || [];
+    if (!names.length) return null;
     const order = Object.entries(prog.arrived).sort((a, b) => a[1] - b[1]).map(([k]) => +k);
     let shift = order.indexOf(id);
     if (shift === -1) shift = order.length;
-    return ROLES.map((role, i) => ({ role, person: names[(i + shift) % names.length] || `Player ${((i + shift) % names.length) + 1}` }));
+    // With fewer players than roles, the first players also take the leftover roles.
+    return ROLES.map((role, i) => ({ role, person: names[(i + shift) % names.length] }));
   }
 
   // ---------- Time ----------
@@ -191,24 +201,8 @@
 
   // ---------- Views ----------
   function viewHome() {
-    const pickOrStart = team
-      ? `<a class="btn primary block big" href="#stops">Start the quest ${ICON.chev.replace('class="chev"', '')}</a>
-         <p class="small muted" style="text-align:center;margin:10px 0 0">Playing as <span class="chip team">${esc(teamName())}</span> · <a href="#switch-team">switch team</a></p>`
-      : `<div>
-           <h3 style="margin-bottom:10px">Pick your team</h3>
-           <div class="team-pick">
-             ${Object.entries(CONFIG.teams).map(([k, t]) => `<a class="btn primary" href="#team-${k}">${esc(t.name)}<small>Tap to join</small></a>`).join('')}
-           </div>
-         </div>`;
-
-    const names = team ? `
-      <details class="card names">
-        <summary>Team names &amp; roles</summary>
-        <p class="small muted" style="margin:8px 0 0">Optional. Add your five names and each stop will show who does what. Roles rotate at every stop.</p>
-        <div class="names-grid">
-          ${prog.names.map((n, i) => `<input type="text" data-name="${i}" value="${esc(n)}" placeholder="Player ${i + 1}" aria-label="Player ${i + 1} name" autocomplete="off">`).join('')}
-        </div>
-      </details>` : '';
+    const pickOrStart = `<a class="btn primary block big" href="#stops">Start the quest ${ICON.chev.replace('class="chev"', '')}</a>
+      <p class="small muted" style="text-align:center;margin:10px 0 0">Playing as <span class="chip team">${esc(teamName())}</span>: ${esc(CONFIG.teams[team].members.join(', '))}<br><a href="#switch-team">Not your team? Switch</a></p>`;
 
     return `<div class="home">
       <div class="home-map">
@@ -224,7 +218,6 @@
           </header>
           ${countdownHtml()}
           ${pickOrStart}
-          ${names}
           <section class="card">
             <h2>How it works</h2>
             <ul class="facts">
@@ -247,18 +240,54 @@
     </div>`;
   }
 
-  function needTeam() {
-    return `<div class="page stack">
-      <h1>Pick your team first</h1>
-      <p class="muted">Your progress is saved on this phone, per team.</p>
-      <div class="team-pick">
-        ${Object.entries(CONFIG.teams).map(([k, t]) => `<a class="btn primary" href="#team-${k}">${esc(t.name)}<small>Tap to join</small></a>`).join('')}
+  // ---------- Landing & login ----------
+  let pendingTeam = null; // team card the player tapped, waiting for its code
+  let gateError = '';
+
+  const gateForm = (kind, label, t = '') => `<form class="gate" data-form="${kind}" data-team="${t}">
+      <label for="code">${esc(label)}</label>
+      <div class="gate-row">
+        <input id="code" type="password" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+        <button class="btn primary" type="submit">Enter</button>
       </div>
+      ${gateError ? `<p class="gate-err" role="alert">${esc(gateError)}</p>` : ''}
+    </form>`;
+
+  function viewLanding() {
+    const teams = Object.entries(CONFIG.teams).map(([k, t]) => `
+      <section class="card team-card ${pendingTeam === k ? 'selected' : ''}">
+        <div class="team-card-top"><h2>${esc(t.name)}</h2><span class="chip">${t.members.length} players</span></div>
+        <ul class="members">${t.members.map((m) => `<li><span class="avatar" aria-hidden="true">${esc(m[0])}</span>${esc(m)}</li>`).join('')}</ul>
+        ${pendingTeam === k
+          ? gateForm('team', `${t.name} code`, k)
+          : `<button class="btn primary block" data-action="pick" data-id="${k}">We're ${esc(t.name)}</button>`}
+      </section>`).join('');
+
+    return `<div class="page stack landing">
+      <header class="hero">
+        <img class="landing-logo" src="icon.svg" alt="">
+        <div class="eyebrow">Two teams · Six spots · One afternoon</div>
+        <h1>Prague City Quest</h1>
+        <p class="lede">Six spots between Old Town, the Castle and Petřín. At each one, answer a question you can only solve standing there, and take a team selfie. Find your name, tap your team and enter the code you got from the judge.</p>
+      </header>
+      ${countdownHtml()}
+      ${teams}
+    </div>`;
+  }
+
+  function viewJudgeGate() {
+    return `<div class="page stack landing">
+      <header class="hero">
+        <img class="landing-logo" src="icon.svg" alt="">
+        <div class="eyebrow">Judge only</div>
+        <h1>Judge login</h1>
+      </header>
+      <section class="card">${gateForm('judge', 'Judge code')}</section>
+      <p class="small muted"><a href="#home">Back to the game</a></p>
     </div>`;
   }
 
   function viewStops() {
-    if (!team) return needTeam();
     const done = doneCount();
     const pct = Math.round((done / STOPS.length) * 100);
     const other = otherTeam();
@@ -318,7 +347,6 @@
   function viewStop(id) {
     const s = stopById(id);
     if (!s) return `<div class="page"><h1>Stop not found</h1><p><a href="#stops">Back to stops</a></p></div>`;
-    if (!team) return needTeam();
     const st = status(id);
     const maps = `https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}`;
     const roles = rolesFor(id);
@@ -346,7 +374,7 @@
           </div>
           ${prog.sent[id] ? `<div class="sent-note">${ICON.check} Sent to the judge at ${timeStr(prog.sent[id])}</div>` : ''}
           <button class="btn ${prog.sent[id] ? '' : 'primary'} block big" data-action="send" data-id="${id}">${ICON.send} ${prog.sent[id] ? 'Send again' : 'Send to judge'}</button>
-          <p class="small muted" style="margin:0;text-align:center">Opens WhatsApp with your answer filled in. Pick the judge and hit send.</p>
+          <p class="small muted" style="margin:0;text-align:center">Opens a WhatsApp chat with the judge, answer filled in. Just hit send.</p>
         </section>`;
 
     return `<div class="page">
@@ -365,7 +393,7 @@
         ${question}
         <section class="card selfie-card">
           <div class="ic">${ICON.camera}</div>
-          <div><h3>Team selfie (0–3 pts)</h3><p class="muted">At least 4 of 5 teammates and the landmark in the shot. Post it in the group chat. Most creative wins.</p></div>
+          <div><h3>Team selfie (0–3 pts)</h3><p class="muted">Everyone except at most one teammate, plus the landmark, in the shot. Post it in the group chat. Most creative wins.</p></div>
         </section>
         ${roles ? `<section class="card"><h3>Roles at this stop</h3><ul class="roles">${roles.map((r) => `<li><b>${esc(r.role.name)}</b><span>${esc(r.person)}</span></li>`).join('')}</ul></section>` : ''}
       </div>
@@ -388,7 +416,7 @@
         <h2>Scoring</h2>
         <table class="score-table">
           <tr><td>Correct answer</td><td>3</td></tr>
-          <tr><td>Team selfie: at least 4 of 5 and the landmark visible. The judge picks the most creative.</td><td>0–3</td></tr>
+          <tr><td>Team selfie: everyone except at most one teammate (4 of 5, or 3 of 4), plus the landmark. The judge picks the most creative.</td><td>0–3</td></tr>
           <tr><td>Detail bonus</td><td>1</td></tr>
           <tr><td>Hint used</td><td>−1</td></tr>
           <tr class="total"><td>Per stop / all six stops</td><td>7 / 42</td></tr>
@@ -534,28 +562,34 @@
     const h = decodeURIComponent(location.hash.slice(1)) || 'home';
     const teamMatch = h.match(/^team-(\w+)$/);
     if (teamMatch && CONFIG.teams[teamMatch[1]]) {
-      setTeam(teamMatch[1]);
-      toast(`You're playing as ${teamName()}`);
+      // A team link only opens that team's code prompt; it never logs anyone in by itself.
+      if (team !== teamMatch[1]) { pendingTeam = teamMatch[1]; gateError = ''; }
       history.replaceState(null, '', '#home');
       return route();
     }
     if (h === 'switch-team') {
+      // Logs this phone out. Each team's progress stays saved here for when it logs back in.
       team = null;
       store.del('pq:team');
+      store.del('pq:teamAuth');
       prog = loadProgress(null);
+      pendingTeam = null;
       history.replaceState(null, '', '#home');
       return route();
     }
 
     const stopMatch = h.match(/^stop-(\d+)$/);
     let tab = h;
-    if (h === 'stops') render(viewStops(), opts);
+    let gated = false;
+    if (h === 'judge') { gated = !judgeAuthed(); render(gated ? viewJudgeGate() : viewJudge(), opts); }
+    else if (!team) { gated = true; render(viewLanding(), opts); }
+    else if (h === 'stops') render(viewStops(), opts);
     else if (stopMatch) { render(viewStop(+stopMatch[1]), opts); tab = 'stops'; }
     else if (h === 'rules') render(viewRules(), opts);
-    else if (h === 'judge') render(viewJudge(), opts);
     else { render(viewHome(), opts); tab = 'home'; mountMap(document.getElementById('map')); }
+    if (gated) document.getElementById('code')?.focus({ preventScroll: true });
 
-    document.body.classList.toggle('no-tabbar', h === 'judge');
+    document.body.classList.toggle('no-tabbar', h === 'judge' || gated);
     tabbar.querySelectorAll('a').forEach((a) => {
       if (a.dataset.tab === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
@@ -572,6 +606,11 @@
   }
 
   const actions = {
+    pick(el, id) {
+      pendingTeam = id;
+      gateError = '';
+      rerender();
+    },
     arrive(el, id) {
       prog.arrived[id] = prog.arrived[id] || Date.now();
       save();
@@ -632,7 +671,7 @@
       if (!confirmTap(el, 'Tap again to play it (once per game)')) return;
       prog.sabotage = Date.now();
       save();
-      openWhatsApp(`🃏 ${teamName()} plays the SABOTAGE CARD!\n${teamName(otherTeam())}: wait 5 minutes before sending your next answer. (${timeStr(Date.now())})`);
+      openWhatsApp(`🃏 ${teamName()} plays the SABOTAGE CARD on ${teamName(otherTeam())}! (${timeStr(Date.now())})\nJudge: please tell them to wait 5 minutes before sending their next answer.`);
       rerender();
     },
 
@@ -670,7 +709,7 @@
       const lines = ['🏆 Prague Quest standings'];
       Object.keys(CONFIG.teams).map((t) => [t, teamTotal(t)]).sort((a, b) => b[1] - a[1])
         .forEach(([t, n]) => lines.push(`${teamName(t)}: ${n} pts`));
-      openWhatsApp(lines.join('\n'));
+      openWhatsApp(lines.join('\n'), '');
     },
     jreset(el) {
       if (!confirmTap(el, 'Tap again to erase all scores')) return;
@@ -695,9 +734,36 @@
     if (d.draft) { prog.drafts[d.draft] = e.target.value; save(); }
     else if (d.bonusDraft) { prog.bonusDrafts[d.bonusDraft] = e.target.value; save(); }
     else if (d.extraDraft) { prog.extraDrafts[d.extraDraft] = e.target.value; save(); }
-    else if (d.name !== undefined) { prog.names[+d.name] = e.target.value; save(); }
     else if (d.jkey) { judge.key[d.jkey] = e.target.value; saveJudge(); }
     else if (d.jlate) { judge.teams[d.jlate].late = Math.max(0, parseInt(e.target.value, 10) || 0); saveJudge(); refreshJudgeTotals(); }
+  });
+
+  app.addEventListener('submit', async (e) => {
+    const form = e.target.closest('form[data-form]');
+    if (!form) return;
+    e.preventDefault();
+    const code = form.querySelector('input').value;
+    if (!window.crypto?.subtle) {
+      gateError = 'Login needs the https:// link. Open the GitHub Pages address instead.';
+      return rerender();
+    }
+    const kind = form.dataset.form;
+    const t = form.dataset.team;
+    const ok = await codeMatches(code, kind === 'judge' ? CONFIG.judgeCodeHash : CONFIG.teams[t].codeHash);
+    if (!ok) {
+      gateError = 'That code didn\'t work. Check with the judge.';
+      return rerender();
+    }
+    gateError = '';
+    if (kind === 'judge') {
+      store.set('pq:judgeAuth', CONFIG.judgeCodeHash);
+    } else {
+      setTeam(t);
+      pendingTeam = null;
+      toast(`Welcome, ${teamName()}!`);
+      history.replaceState(null, '', '#home');
+    }
+    route();
   });
 
   window.addEventListener('hashchange', () => route());
