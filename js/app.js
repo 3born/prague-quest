@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const { CONFIG, STOPS, ROLES, EXTRAS } = window.PQ;
+  const { CONFIG, STOPS, ROLES, EXTRAS, SNYT } = window.PQ;
   const app = document.getElementById('app');
   const tabbar = document.getElementById('tabbar');
   const darkMq = window.matchMedia('(prefers-color-scheme: dark)');
@@ -24,12 +24,9 @@
   // Team messages go to the judge's number; the judge's own "share scores" picks a chat.
   const waLink = (text, phone = '') => `https://wa.me/${phone}?text=` + encodeURIComponent(text);
   const openWhatsApp = (text, phone = CONFIG.judgePhone) => window.open(waLink(text, phone), '_blank', 'noopener');
-
-  async function sha256(s) {
-    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
-    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
-  }
-  const codeMatches = async (code, hash) => (await sha256('pq:' + code.trim().toLowerCase())) === hash;
+  const photoChat = () => (CONFIG.photoChatUrl
+    ? `<a href="${esc(CONFIG.photoChatUrl)}" target="_blank" rel="noopener">${esc(CONFIG.photoChatName)}</a>`
+    : esc(CONFIG.photoChatName));
 
   const ICON = {
     chev: '<svg class="chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>',
@@ -64,18 +61,17 @@
   }
 
   // ---------- Team & progress ----------
-  // A phone stays logged in until "Switch team". Changing a code in data.js logs everyone out.
+  // A phone remembers its team until "Switch team".
   let team = store.get('pq:team', null);
-  if (team && (!CONFIG.teams[team] || store.get('pq:teamAuth', null) !== CONFIG.teams[team].codeHash)) team = null;
+  if (team && !CONFIG.teams[team]) team = null;
   let prog = loadProgress(team);
-  const judgeAuthed = () => store.get('pq:judgeAuth', null) === CONFIG.judgeCodeHash;
 
   function loadProgress(t) {
     const blank = { arrived: {}, hints: {}, drafts: {}, bonusDrafts: {}, sent: {}, extras: {}, extraDrafts: {}, sabotage: null };
     return t ? Object.assign(blank, store.get('pq:progress:' + t, {})) : blank;
   }
   function save() { if (team) store.set('pq:progress:' + team, prog); }
-  function setTeam(t) { team = t; store.set('pq:team', t); store.set('pq:teamAuth', CONFIG.teams[t].codeHash); prog = loadProgress(t); }
+  function setTeam(t) { team = t; store.set('pq:team', t); prog = loadProgress(t); }
   const teamName = (t = team) => (t ? CONFIG.teams[t].name : '');
   const otherTeam = () => Object.keys(CONFIG.teams).find((t) => t !== team);
 
@@ -228,7 +224,7 @@
             </ul>
             <ul class="rules-list" style="margin-top:14px">
               <li>Tap <b>We're here</b> at a spot to unlock its question.</li>
-              <li>Send your answer to the judge on WhatsApp. Selfies go in the group chat.</li>
+              <li>Send your answer to the judge on WhatsApp. All photos go in ${photoChat()}.</li>
               <li>Hints cost 1 point. Arriving late costs 2 points per 5 minutes after a 5-minute grace.</li>
               <li>No googling. Stay together. Cross roads safely.</li>
             </ul>
@@ -240,27 +236,13 @@
     </div>`;
   }
 
-  // ---------- Landing & login ----------
-  let pendingTeam = null; // team card the player tapped, waiting for its code
-  let gateError = '';
-
-  const gateForm = (kind, label, t = '') => `<form class="gate" data-form="${kind}" data-team="${t}">
-      <label for="code">${esc(label)}</label>
-      <div class="gate-row">
-        <input id="code" type="password" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" required>
-        <button class="btn primary" type="submit">Enter</button>
-      </div>
-      ${gateError ? `<p class="gate-err" role="alert">${esc(gateError)}</p>` : ''}
-    </form>`;
-
+  // ---------- Landing ----------
   function viewLanding() {
     const teams = Object.entries(CONFIG.teams).map(([k, t]) => `
-      <section class="card team-card ${pendingTeam === k ? 'selected' : ''}">
+      <section class="card team-card">
         <div class="team-card-top"><h2>${esc(t.name)}</h2><span class="chip">${t.members.length} players</span></div>
         <ul class="members">${t.members.map((m) => `<li><span class="avatar" aria-hidden="true">${esc(m[0])}</span>${esc(m)}</li>`).join('')}</ul>
-        ${pendingTeam === k
-          ? gateForm('team', `${t.name} code`, k)
-          : `<button class="btn primary block" data-action="pick" data-id="${k}">We're ${esc(t.name)}</button>`}
+        <a class="btn primary block" href="#team-${k}">We're ${esc(t.name)}</a>
       </section>`).join('');
 
     return `<div class="page stack landing">
@@ -268,22 +250,10 @@
         <img class="landing-logo" src="icon.svg" alt="">
         <div class="eyebrow">Two teams · Six spots · One afternoon</div>
         <h1>Prague City Quest</h1>
-        <p class="lede">Six spots between Old Town, the Castle and Petřín. At each one, answer a question you can only solve standing there, and take a team selfie. Find your name, tap your team and enter the code you got from the judge.</p>
+        <p class="lede">Six spots between Old Town, the Castle and Petřín. At each one, answer a question you can only solve standing there, and take a team selfie. Find your name and tap your team.</p>
       </header>
       ${countdownHtml()}
       ${teams}
-    </div>`;
-  }
-
-  function viewJudgeGate() {
-    return `<div class="page stack landing">
-      <header class="hero">
-        <img class="landing-logo" src="icon.svg" alt="">
-        <div class="eyebrow">Judge only</div>
-        <h1>Judge login</h1>
-      </header>
-      <section class="card">${gateForm('judge', 'Judge code')}</section>
-      <p class="small muted"><a href="#home">Back to the game</a></p>
     </div>`;
   }
 
@@ -335,6 +305,13 @@
 
       <h2 class="section-title">Extra points</h2>
       <div class="stack">${extras}
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+            <h3>Šnyt challenge 🍺</h3><span class="chip">+${SNYT.points} pts</span>
+          </div>
+          <p class="muted">${esc(SNYT.text).replace('the Facebook chat', photoChat())}</p>
+          <a class="small" href="${esc(SNYT.url)}" target="_blank" rel="noopener">What's a šnyt? Pilsner Urquell's three pours →</a>
+        </div>
         <div class="card">
           <h3>Sabotage card</h3>
           <p class="muted">Once per game. ${esc(teamName(other))} must wait 5 minutes before sending their next answer.</p>
@@ -393,7 +370,7 @@
         ${question}
         <section class="card selfie-card">
           <div class="ic">${ICON.camera}</div>
-          <div><h3>Team selfie (0–3 pts)</h3><p class="muted">Everyone except at most one teammate, plus the landmark, in the shot. Post it in the group chat. Most creative wins.</p></div>
+          <div><h3>Team selfie (0–3 pts)</h3><p class="muted">Everyone except at most one teammate, plus the landmark, in the shot. Post it in ${photoChat()}. Most creative wins.</p></div>
         </section>
         ${roles ? `<section class="card"><h3>Roles at this stop</h3><ul class="roles">${roles.map((r) => `<li><b>${esc(r.role.name)}</b><span>${esc(r.person)}</span></li>`).join('')}</ul></section>` : ''}
       </div>
@@ -408,7 +385,7 @@
         <ul class="rules-list">
           <li>Two teams of five. You have 3 hours from the start at ${esc(CONFIG.startPlace)}.</li>
           <li>Visit the six stops in any order you like, then finish at ${esc(CONFIG.finishPlace)}.</li>
-          <li>At each stop, tap <b>We're here</b>, answer the question and send it to the judge. Post your team selfie in the group chat.</li>
+          <li>At each stop, tap <b>We're here</b>, answer the question and send it to the judge. Post your team selfie in ${photoChat()}. All photos go there, not to the judge on WhatsApp.</li>
           <li>GPS in the app is just a helper. You only need to be there.</li>
         </ul>
       </section>
@@ -428,6 +405,7 @@
           <tr><td>Rest stop: 15 minutes at a café, with a photo of your table</td><td>+2</td></tr>
           <tr><td>Local challenge: order in Czech, or ask a local for their favourite spot</td><td>+2</td></tr>
           <tr><td>Mystery question at the finish, combining details from two stops</td><td>+5</td></tr>
+          <tr><td>Šnyt challenge: the team with the most šnyts by the finish (a photo of each in ${photoChat()}; a tie gives both teams the points). <a href="${esc(SNYT.url)}" target="_blank" rel="noopener">What's a šnyt?</a></td><td>+${SNYT.points}</td></tr>
         </table>
       </section>
       <section class="card">
@@ -457,7 +435,7 @@
 
   // ---------- Judge ----------
   const J_KEY = 'pq:judge';
-  const blankJudgeTeam = () => ({ stops: {}, cafe: false, local: false, mystery: 0, late: 0 });
+  const blankJudgeTeam = () => ({ stops: {}, cafe: false, local: false, mystery: 0, late: 0, snyt: 0 });
   let judge = loadJudge();
 
   function loadJudge() {
@@ -472,11 +450,25 @@
   const jStop = (t, id) => Object.assign({ answer: 0, selfie: 0, detail: 0, hint: false }, judge.teams[t].stops[id] || {});
   const stopScore = (t, id) => { const s = jStop(t, id); return s.answer + s.selfie + s.detail - (s.hint ? 1 : 0); };
 
+  // Most šnyts wins the bonus; a tie gives it to every team on top (none if nobody has any).
+  function snytBonus(t) {
+    const counts = Object.values(judge.teams).map((jt) => +jt.snyt || 0);
+    const mine = +judge.teams[t].snyt || 0;
+    return mine > 0 && mine === Math.max(...counts) ? SNYT.points : 0;
+  }
+
   function teamTotal(t) {
     const jt = judge.teams[t];
     const stops = STOPS.reduce((sum, s) => sum + stopScore(t, s.id), 0);
-    return stops + (jt.cafe ? 2 : 0) + (jt.local ? 2 : 0) + (+jt.mystery || 0) - latePenalty(+jt.late || 0);
+    return stops + (jt.cafe ? 2 : 0) + (jt.local ? 2 : 0) + (+jt.mystery || 0) + snytBonus(t) - latePenalty(+jt.late || 0);
   }
+
+  const stepper = (t, field, value, label) => `<div class="stepper">
+      <button type="button" data-action="jstep" data-team="${t}" data-field="${field}" data-delta="-1" aria-label="${label} minus one">−</button>
+      <input type="number" inputmode="numeric" min="0" data-jstep="${field}" data-team="${t}" value="${value}" aria-label="${label}">
+      <button type="button" data-action="jstep" data-team="${t}" data-field="${field}" data-delta="1" aria-label="${label} plus one">+</button>
+    </div>`;
+  const snytNote = (t) => (snytBonus(t) ? `In the lead: +${SNYT.points}` : 'Not in the lead');
 
   const seg = (t, id, field, max, value) => `<div class="seg" role="group" aria-label="${field}">${
     Array.from({ length: max + 1 }, (_, v) => `<button type="button" data-action="jset" data-team="${t}" data-stop="${id}" data-field="${field}" data-val="${v}" aria-pressed="${value === v}">${v}</button>`).join('')
@@ -526,12 +518,12 @@
           <div class="j-row"><span>Local challenge (+2)</span><button type="button" class="toggle" data-action="jflag" data-team="${t}" data-field="local" aria-pressed="${jt.local}">${jt.local ? 'Yes' : 'No'}</button></div>
           <div class="j-row"><span>Mystery question</span>${seg(t, 'x', 'mystery', 5, +jt.mystery || 0)}</div>
           <div class="j-row">
+            <span>Šnyts (photos in chat)<br><span class="small muted" id="snyt-note">${snytNote(t)}</span></span>
+            ${stepper(t, 'snyt', +jt.snyt || 0, 'Šnyts')}
+          </div>
+          <div class="j-row">
             <span>Minutes late<br><span class="small muted" id="late-pen">Penalty −${latePenalty(late)}</span></span>
-            <div class="stepper">
-              <button type="button" data-action="jlate" data-team="${t}" data-delta="-1" aria-label="One minute less">−</button>
-              <input type="number" inputmode="numeric" min="0" data-jlate="${t}" value="${late}" aria-label="Minutes late">
-              <button type="button" data-action="jlate" data-team="${t}" data-delta="1" aria-label="One minute more">+</button>
-            </div>
+            ${stepper(t, 'late', late, 'Minutes late')}
           </div>
         </section>
         <div class="btn-row">
@@ -546,6 +538,8 @@
   function refreshJudgeTotals() {
     const sb = document.getElementById('scoreboard');
     if (sb) sb.innerHTML = scoreboardHtml();
+    const snyt = document.getElementById('snyt-note');
+    if (snyt) snyt.textContent = snytNote(judge.tab);
     const pen = document.getElementById('late-pen');
     if (pen) pen.textContent = `Penalty −${latePenalty(+judge.teams[judge.tab].late || 0)}`;
   }
@@ -562,34 +556,30 @@
     const h = decodeURIComponent(location.hash.slice(1)) || 'home';
     const teamMatch = h.match(/^team-(\w+)$/);
     if (teamMatch && CONFIG.teams[teamMatch[1]]) {
-      // A team link only opens that team's code prompt; it never logs anyone in by itself.
-      if (team !== teamMatch[1]) { pendingTeam = teamMatch[1]; gateError = ''; }
+      if (team !== teamMatch[1]) { setTeam(teamMatch[1]); toast(`Welcome, ${teamName()}!`); }
       history.replaceState(null, '', '#home');
       return route();
     }
     if (h === 'switch-team') {
-      // Logs this phone out. Each team's progress stays saved here for when it logs back in.
+      // Back to the landing page. Each team's progress stays saved on this phone.
       team = null;
       store.del('pq:team');
-      store.del('pq:teamAuth');
       prog = loadProgress(null);
-      pendingTeam = null;
       history.replaceState(null, '', '#home');
       return route();
     }
 
     const stopMatch = h.match(/^stop-(\d+)$/);
     let tab = h;
-    let gated = false;
-    if (h === 'judge') { gated = !judgeAuthed(); render(gated ? viewJudgeGate() : viewJudge(), opts); }
-    else if (!team) { gated = true; render(viewLanding(), opts); }
+    const landing = !team && h !== 'judge';
+    if (h === 'judge') render(viewJudge(), opts);
+    else if (landing) render(viewLanding(), opts);
     else if (h === 'stops') render(viewStops(), opts);
     else if (stopMatch) { render(viewStop(+stopMatch[1]), opts); tab = 'stops'; }
     else if (h === 'rules') render(viewRules(), opts);
     else { render(viewHome(), opts); tab = 'home'; mountMap(document.getElementById('map')); }
-    if (gated) document.getElementById('code')?.focus({ preventScroll: true });
 
-    document.body.classList.toggle('no-tabbar', h === 'judge' || gated);
+    document.body.classList.toggle('no-tabbar', h === 'judge' || landing);
     tabbar.querySelectorAll('a').forEach((a) => {
       if (a.dataset.tab === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
@@ -606,11 +596,6 @@
   }
 
   const actions = {
-    pick(el, id) {
-      pendingTeam = id;
-      gateError = '';
-      rerender();
-    },
     arrive(el, id) {
       prog.arrived[id] = prog.arrived[id] || Date.now();
       save();
@@ -661,7 +646,7 @@
     extra(el, id) {
       const x = EXTRAS.find((e) => e.id === id);
       const note = (prog.extraDrafts[id] || '').trim();
-      const lines = [`🏰 Prague Quest · ${teamName()}`, `Extra: ${x.name} (+${x.points})`, note ? `Note: ${note}` : null, id === 'cafe' ? 'Table photo is in the group chat.' : null, `Sent ${timeStr(Date.now())}`].filter(Boolean);
+      const lines = [`🏰 Prague Quest · ${teamName()}`, `Extra: ${x.name} (+${x.points})`, note ? `Note: ${note}` : null, id === 'cafe' ? `Table photo is in ${CONFIG.photoChatName}.` : null, `Sent ${timeStr(Date.now())}`].filter(Boolean);
       prog.extras[id] = Date.now();
       save();
       openWhatsApp(lines.join('\n'));
@@ -697,12 +682,12 @@
       saveJudge();
       rerender();
     },
-    jlate(el) {
-      const t = el.dataset.team;
-      judge.teams[t].late = Math.max(0, (+judge.teams[t].late || 0) + +el.dataset.delta);
+    jstep(el) {
+      const { team: t, field } = el.dataset;
+      judge.teams[t][field] = Math.max(0, (+judge.teams[t][field] || 0) + +el.dataset.delta);
       saveJudge();
-      const input = document.querySelector(`[data-jlate="${t}"]`);
-      if (input) input.value = judge.teams[t].late;
+      const input = document.querySelector(`[data-jstep="${field}"][data-team="${t}"]`);
+      if (input) input.value = judge.teams[t][field];
       refreshJudgeTotals();
     },
     jshare() {
@@ -735,35 +720,7 @@
     else if (d.bonusDraft) { prog.bonusDrafts[d.bonusDraft] = e.target.value; save(); }
     else if (d.extraDraft) { prog.extraDrafts[d.extraDraft] = e.target.value; save(); }
     else if (d.jkey) { judge.key[d.jkey] = e.target.value; saveJudge(); }
-    else if (d.jlate) { judge.teams[d.jlate].late = Math.max(0, parseInt(e.target.value, 10) || 0); saveJudge(); refreshJudgeTotals(); }
-  });
-
-  app.addEventListener('submit', async (e) => {
-    const form = e.target.closest('form[data-form]');
-    if (!form) return;
-    e.preventDefault();
-    const code = form.querySelector('input').value;
-    if (!window.crypto?.subtle) {
-      gateError = 'Login needs the https:// link. Open the GitHub Pages address instead.';
-      return rerender();
-    }
-    const kind = form.dataset.form;
-    const t = form.dataset.team;
-    const ok = await codeMatches(code, kind === 'judge' ? CONFIG.judgeCodeHash : CONFIG.teams[t].codeHash);
-    if (!ok) {
-      gateError = 'That code didn\'t work. Check with the judge.';
-      return rerender();
-    }
-    gateError = '';
-    if (kind === 'judge') {
-      store.set('pq:judgeAuth', CONFIG.judgeCodeHash);
-    } else {
-      setTeam(t);
-      pendingTeam = null;
-      toast(`Welcome, ${teamName()}!`);
-      history.replaceState(null, '', '#home');
-    }
-    route();
+    else if (d.jstep) { judge.teams[d.team][d.jstep] = Math.max(0, parseInt(e.target.value, 10) || 0); saveJudge(); refreshJudgeTotals(); }
   });
 
   window.addEventListener('hashchange', () => route());

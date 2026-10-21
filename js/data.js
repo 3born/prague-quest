@@ -12,26 +12,19 @@ window.PQ = {
     cartoKey: '',
     // WhatsApp number answers are sent to (country code, no + or spaces).
     judgePhone: '',
-    // Passcodes are stored as SHA-256 of 'pq:' + lowercase code. This only keeps casual
-    // visitors out: it is not real security. Plain codes live in PASSCODES.local.txt (not in git).
-    judgeCodeHash: 'd7ade706d7204c65f624c6897a04e98d4f92c3038d02aa389b7804574f7fb353',
+    // All photos go to the Facebook chat. Optional: paste its Messenger link (m.me/...) to show
+    // an "Open photo chat" button.
+    photoChatName: 'the Facebook chat',
+    photoChatUrl: '',
     teams: {
-      a: {
-        name: 'Team A',
-        members: ['Fredrik', 'Fanny', 'Tessan', 'Måns'],
-        codeHash: '396310bee76c3d8445f91c2f67358e356411e899468ea4757e4c3e02f98bd984',
-      },
-      b: {
-        name: 'Team B',
-        members: ['Calle', 'Axel', 'Maja', 'Eskil', 'Brorsson'],
-        codeHash: 'fa8b08d22dd600f5cb19d6e42adf2dc1ee756b05613d25e9b0ef3e92a095e731',
-      },
+      a: { name: 'Team A', members: ['Calle', 'Fanny', 'Tessan', 'Måns'] },
+      b: { name: 'Team B', members: ['Fredrik', 'Axel', 'Maja', 'Eskil', 'Brorsson'] },
     },
   },
 
   ROLES: [
     { name: 'Navigator', does: 'Leads the way and keeps an eye on the map.' },
-    { name: 'Photographer', does: 'Frames the team selfie and posts it to the group chat.' },
+    { name: 'Photographer', does: 'Frames the team selfie and posts it to the Facebook chat.' },
     { name: 'Riddle-solver', does: 'Reads the question aloud and leads the hunt for the answer.' },
     { name: 'Translator', does: 'Handles Czech signs, menus and talking to locals.' },
     { name: 'Scorekeeper', does: 'Types the answer and taps "Send to judge".' },
@@ -101,8 +94,14 @@ window.PQ = {
     },
   ],
 
+  SNYT: {
+    points: 2,
+    text: 'The team that drinks the most šnyts before it\'s back at the finish gets +2. Post a photo of every šnyt in the Facebook chat. If it\'s a tie, both teams get the points.',
+    url: 'https://www.pilsnerurquell.com/stories/foam-is-flavour-three-pilsner-urquell-pours/',
+  },
+
   EXTRAS: [
-    { id: 'cafe', name: 'Rest stop', points: 2, text: 'Sit down at a café for 15 minutes. Post a photo of your table to the group chat.' },
+    { id: 'cafe', name: 'Rest stop', points: 2, text: 'Sit down at a café for 15 minutes. Post a photo of your table in the Facebook chat.' },
     { id: 'local', name: 'Local challenge', points: 2, text: 'Order something in Czech, or ask a local for their favourite spot in Prague.' },
   ],
 };
