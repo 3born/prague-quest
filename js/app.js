@@ -494,7 +494,7 @@
       <section class="card">
         <h2>Extras</h2>
         <table class="score-table">
-          <tr><td>Rest stop: 15 minutes sitting down, with a photo of your table. The team that drinks the most Hladinkas there wins (a tie gives both teams the points).</td><td>+2</td></tr>
+          <tr><td>Rest stop: take a pit stop, for however many minutes you want, with a photo of your table. The team that drinks the most Hladinkas there wins (a tie gives both teams the points).</td><td>+2</td></tr>
           <tr><td>Local challenge, just for fun: order in Czech, or ask a local for their favourite spot</td><td>+0</td></tr>
           <tr><td>Vodníkovo sperma: drink one at any point during the quest, with a photo in ${photoChat()}. Googling is allowed for this one, since we're not sure it's real.</td><td>+1</td></tr>
           <tr><td>Mystery question at the finish, combining details from two stops</td><td>+5</td></tr>
