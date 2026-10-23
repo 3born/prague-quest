@@ -2,8 +2,8 @@
 window.PQ = {
   CONFIG: {
     // Edit before game day. Prague is UTC+1 in winter (CET) and UTC+2 in summer (CEST).
-    startAt: '2026-11-14T13:00:00+01:00',
-    finishAt: '2026-11-14T16:00:00+01:00',
+    startAt: '2026-10-23T14:00:00+02:00',
+    finishAt: '2026-10-23T17:00:00+02:00',
     startPlace: 'Old Town Square, by the Astronomical Clock',
     finishPlace: 'the pub',
     graceMinutes: 5,
@@ -29,8 +29,8 @@ window.PQ = {
       // shotPhrase is used when this team gets sabotaged (Czech: "čtyři panáky", but "pět panáků").
       a: {
         name: 'Team A',
-        members: ['Calle', 'Fanny', 'Tessan', 'Måns'],
-        shotPhrase: 'Dobrý den, můžeme poprosit o čtyři panáky místního alkoholu?',
+        members: ['Calle', 'Fanny', 'Tessan', 'Måns', 'Sofia'],
+        shotPhrase: 'Dobrý den, můžeme poprosit o pět panáků místního alkoholu?',
       },
       b: {
         name: 'Team B',

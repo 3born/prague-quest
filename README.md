@@ -19,7 +19,7 @@ The site opens on a landing page with both team rosters. Players tap their team,
 
 ## Before game day: edit `js/data.js`
 
-- `startAt` / `finishAt`: the game day and times (Prague is UTC+1 in November).
+- `startAt` / `finishAt`: the game day and times (Prague is UTC+2 until the last Sunday of October, then UTC+1).
 - `finishPlace`: the pub's name.
 - `cartoKey`: CARTO basemaps now need a free key (request one at <https://carto.com/basemaps/apikey>, then restrict it to `3born.github.io`). Without a key the map uses standard OpenStreetMap tiles, darkened in dark mode.
 - Stop coordinates are approximate. Check each pin in Google Maps.
