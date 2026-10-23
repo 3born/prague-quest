@@ -21,6 +21,7 @@
   const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   const timeStr = (ts) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const stopById = (id) => STOPS.find((s) => s.id === id);
+  const GOAL_NUM = STOPS.length + 1; // the goal is shown as the last numbered stop
   // With no judgePhone set, WhatsApp asks which chat to send to.
   const waLink = (text, phone = '') => `https://wa.me/${phone}?text=` + encodeURIComponent(text);
   const openWhatsApp = (text, phone = CONFIG.judgePhone) => window.open(waLink(text, phone), '_blank', 'noopener');
@@ -169,7 +170,8 @@
     L.control.zoom({ position: 'bottomright' }).addTo(map);
     setTiles();
 
-    const pts = STOPS.map((s) => [s.lat, s.lng]);
+    const g = CONFIG.goal;
+    const pts = [...STOPS.map((s) => [s.lat, s.lng]), [g.lat, g.lng]];
     L.polyline(pts, { color: cssVar('--accent'), weight: 3, opacity: 0.6, dashArray: '1 9', lineCap: 'round' }).addTo(map);
 
     STOPS.forEach((s) => {
@@ -186,21 +188,26 @@
         .bindPopup(`<div class="pop"><div class="pop-num">Stop ${s.id} · ${esc(s.area)}</div><strong>${esc(s.name)}</strong><p>${esc(s.intro)}</p><a href="#stop-${s.id}">Open stop →</a></div>`, { maxWidth: 260, autoPanPadding: [20, 60] });
     });
 
+    const goalIcon = L.divIcon({ className: 'pin-wrap', html: `<div class="pin pin-goal"><span>${GOAL_NUM}</span></div>`, iconSize: [36, 42], iconAnchor: [18, 40], popupAnchor: [0, -38] });
+    L.marker([g.lat, g.lng], { icon: goalIcon, title: `${GOAL_NUM}. Goal: ${g.name}`, alt: `Goal: ${g.name}`, riseOnHover: true, zIndexOffset: 500 })
+      .addTo(map)
+      .bindPopup(`<div class="pop"><div class="pop-num">Goal · be here by ${timeStr(Date.parse(CONFIG.finishAt))}</div><strong>${esc(g.name)}</strong><p>${esc(g.intro)}</p><a href="#goal">Open goal →</a></div>`, { maxWidth: 260, autoPanPadding: [20, 60] });
+
     const fit = () => map.fitBounds(L.latLngBounds(pts), { padding: [36, 36] });
     fit();
     // The container can change size after fonts/layout settle.
     setTimeout(() => { map.invalidateSize(); fit(); }, 150);
   }
 
-  function mountHomeMap(el) {
+  // Small single-pin map for the "Take me home" and goal pages.
+  function mountPlaceMap(el, place, { pinClass, glyph, label, sub }) {
     if (typeof L === 'undefined') { el.innerHTML = '<p class="page muted">The map could not load. Check your connection.</p>'; return; }
-    const h = CONFIG.home;
-    map = L.map(el, { zoomControl: false, scrollWheelZoom: false }).setView([h.lat, h.lng], 16);
+    map = L.map(el, { zoomControl: false, scrollWheelZoom: false }).setView([place.lat, place.lng], 16);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
     setTiles();
-    const icon = L.divIcon({ className: 'pin-wrap', html: '<div class="pin pin-home"><span>⌂</span></div>', iconSize: [36, 42], iconAnchor: [18, 40], popupAnchor: [0, -38] });
-    L.marker([h.lat, h.lng], { icon, title: h.name, alt: 'Home' }).addTo(map)
-      .bindPopup(`<div class="pop"><div class="pop-num">Home</div><strong>${esc(h.name)}</strong><p>${esc(h.address)}</p></div>`);
+    const icon = L.divIcon({ className: 'pin-wrap', html: `<div class="pin ${pinClass}"><span>${glyph}</span></div>`, iconSize: [36, 42], iconAnchor: [18, 40], popupAnchor: [0, -38] });
+    L.marker([place.lat, place.lng], { icon, title: place.name, alt: label }).addTo(map)
+      .bindPopup(`<div class="pop"><div class="pop-num">${esc(label)}</div><strong>${esc(place.name)}</strong><p>${esc(sub)}</p></div>`);
     setTimeout(() => map && map.invalidateSize(), 150);
   }
 
@@ -315,7 +322,17 @@
         <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${STOPS.length}" aria-valuenow="${done}"><i style="width:${pct}%"></i></div>
       </div>
       ${countdownHtml()}
-      <div class="stop-list" style="margin-top:14px">${cards}</div>
+      <div class="stop-list" style="margin-top:14px">${cards}
+        <a class="stop-card goal" href="#goal">
+          <div class="num">${GOAL_NUM}</div>
+          <div class="body">
+            <div class="title">Goal: ${esc(CONFIG.goal.name)}</div>
+            <div class="area">${esc(CONFIG.goal.area)}</div>
+            <span class="chip team" style="margin-top:6px">Be here by ${timeStr(Date.parse(CONFIG.finishAt))}</span>
+          </div>
+          ${ICON.chev}
+        </a>
+      </div>
       ${done === STOPS.length ? `<div class="card soft" style="margin-top:14px"><h3>All six done!</h3><p class="muted" style="margin:0">Head to ${esc(CONFIG.finishPlace)}. The judge has one last mystery question for you there.</p></div>` : ''}
 
       <h2 class="section-title">Extra points</h2>
@@ -418,6 +435,37 @@
         <div class="phrase"><span class="q-label">Say</span><p lang="cs">${esc(h.taxiPhrase)}</p></div>
         <p class="small muted" style="margin:0">Bolt or Uber gives you a fixed price. Taxis hailed on the street can overcharge.</p>
       </section>
+    </div>`;
+  }
+
+  function viewGoal() {
+    const g = CONFIG.goal;
+    const walk = `https://www.google.com/maps/dir/?api=1&destination=${g.lat},${g.lng}&travelmode=walking`;
+    const by = timeStr(Date.parse(CONFIG.finishAt));
+    return `<div class="page">
+      <a class="back" href="#stops">${ICON.back} All stops</a>
+      <div class="stop-hero goal">
+        <div class="num">${GOAL_NUM}</div>
+        <div><div class="eyebrow">The goal</div><h1>${esc(g.name)}</h1><div class="area">${esc(g.area)}</div></div>
+      </div>
+      <div class="stack">
+        <p>${esc(g.intro)}</p>
+        <section class="card stack">
+          <div>
+            <div class="q-label">Be here by</div>
+            <p class="address">${by}</p>
+            <p class="small muted" style="margin:0">Both teams meet here at ${by}, whatever you've finished. After a ${CONFIG.graceMinutes}-minute grace period you lose 2 points for every further 5 minutes late.</p>
+          </div>
+          ${countdownHtml()}
+          <div class="btn-row">
+            <a class="btn primary" href="${esc(walk)}" target="_blank" rel="noopener">${ICON.pin} Walk there</a>
+            <a class="btn" href="${esc(g.mapsUrl)}" target="_blank" rel="noopener">Google Maps</a>
+          </div>
+          <button class="btn ghost block" data-action="gps" data-id="goal">${ICON.gps} How far is it?</button>
+          <div class="gps-out" id="gps-out" aria-live="polite"></div>
+        </section>
+        <div class="map-mini" id="goal-map" role="region" aria-label="Map showing the goal"></div>
+      </div>
     </div>`;
   }
 
@@ -629,10 +677,18 @@
     // The judge page and "Take me home" work without picking a team.
     const landing = !team && h !== 'judge' && h !== 'take-me-home';
     if (h === 'judge') render(viewJudge(), opts);
-    else if (h === 'take-me-home') { render(viewTakeMeHome(), opts); mountHomeMap(document.getElementById('home-map')); }
+    else if (h === 'take-me-home') {
+      render(viewTakeMeHome(), opts);
+      mountPlaceMap(document.getElementById('home-map'), CONFIG.home, { pinClass: 'pin-home', glyph: '⌂', label: 'Home', sub: CONFIG.home.address });
+    }
     else if (landing) render(viewLanding(), opts);
     else if (h === 'stops') render(viewStops(), opts);
     else if (stopMatch) { render(viewStop(+stopMatch[1]), opts); tab = 'stops'; }
+    else if (h === 'goal') {
+      render(viewGoal(), opts);
+      tab = 'stops';
+      mountPlaceMap(document.getElementById('goal-map'), CONFIG.goal, { pinClass: 'pin-goal', glyph: GOAL_NUM, label: 'Goal', sub: CONFIG.goal.area });
+    }
     else if (h === 'rules') render(viewRules(), opts);
     else { render(viewHome(), opts); tab = 'home'; mountMap(document.getElementById('map')); }
 
@@ -685,7 +741,7 @@
     },
     gps(el, id) {
       const out = document.getElementById('gps-out');
-      const s = id === 'home' ? CONFIG.home : stopById(id);
+      const s = id === 'home' ? CONFIG.home : id === 'goal' ? CONFIG.goal : stopById(id);
       if (!('geolocation' in navigator)) { out.textContent = 'GPS isn\'t available on this device. No problem, it\'s only a hint.'; return; }
       out.className = 'gps-out';
       out.textContent = 'Finding you…';

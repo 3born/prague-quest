@@ -5,7 +5,15 @@ window.PQ = {
     startAt: '2026-10-23T14:00:00+02:00',
     finishAt: '2026-10-23T17:00:00+02:00',
     startPlace: 'Old Town Square, by the Astronomical Clock',
-    finishPlace: 'the pub',
+    finishPlace: 'U Zlatého tygra',
+    // Goal #7: where both teams meet by finishAt. Coordinates are from the Google Maps link.
+    goal: {
+      name: 'U Zlatého tygra',
+      area: 'Husova 17, Old Town',
+      intro: 'The goal. A legendary Old Town pub known for its Pilsner Urquell. Václav Havel brought Bill Clinton here for a beer in 1994.',
+      lat: 50.0858565, lng: 14.4180513,
+      mapsUrl: 'https://maps.app.goo.gl/wf2iASMj9hCHxHGY6',
+    },
     graceMinutes: 5,
     // CARTO basemaps now need a free key (https://carto.com/basemaps/apikey). Paste it here and
     // restrict it to 3born.github.io in the CARTO dashboard. Empty = OpenStreetMap tiles instead.

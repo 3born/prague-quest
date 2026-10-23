@@ -130,7 +130,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .btn.big { min-height: 56px; font-size: 1.05rem; }
 .btn[disabled] { opacity: .5; cursor: not-allowed; }
 .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
-.btn-row > .btn { flex: 1 1 140px; }
+.btn-row > .btn { flex: 1 1 140px; padding: 0 14px; white-space: nowrap; }
 
 .chip {
   display: inline-flex; align-items: center; gap: 6px;
@@ -343,6 +343,11 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); box-sh
 .address { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; line-height: 1.2; margin: 4px 0 4px; }
 .map-mini { height: 260px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow); }
 .pin.pin-home { background: var(--ok); }
+/* Goal: dark pin and gold number, so the finish stands out from the six stops. */
+.pin.pin-goal { background: #1d2433; border-color: var(--gold); }
+.pin.pin-goal span { color: #f6c35a; }
+.stop-card.goal { border-color: var(--accent); }
+.stop-card.goal .num, .stop-hero.goal .num { background: #1d2433; color: #f6c35a; }
 .pin.pin-home span { font-size: 20px; }
 
 /* ---------- Rules ---------- */
